@@ -1,6 +1,9 @@
-use wgpu_3dgs_core::{ComputeBundleBuilder, wesl::DynResolver};
+use wgpu_3dgs_core::{BufferWrapper, ComputeBundleBuilder, wesl::DynResolver};
 
-use crate::core::ComputeBundle;
+use crate::{
+    Error,
+    core::{self, ComputeBundle},
+};
 
 /// A selection operation expression tree.
 ///
@@ -50,13 +53,13 @@ impl SelectionOpExpr {
     }
 
     /// Create a new [`SelectionOpExpr::Unary`].
-    pub fn unary(op: u32, other: Self) -> Self {
-        Self::Unary(op, Box::new(other))
+    pub fn unary(self, op: u32) -> Self {
+        Self::Unary(op, Box::new(self))
     }
 
     /// Create a new [`SelectionOpExpr::Binary`].
-    pub fn binary(left: Self, op: u32, right: Self) -> Self {
-        Self::Binary(Box::new(left), op, Box::new(right))
+    pub fn binary(self, op: u32, other: Self) -> Self {
+        Self::Binary(Box::new(self), op, Box::new(other))
     }
 }
 
@@ -70,5 +73,82 @@ pub struct SelectionBundle<B = wgpu::BindGroup> {
 /// A builder for [`SelectionBundle`].
 pub struct SelectionBundleBuilder<'a, R: wesl::Resolver> {
     /// The compute bundle builder.
-    pub builder: ComputeBundleBuilder<'a, DynResolver<R>>,
+    pub builder: ComputeBundleBuilder<'a, R>,
+    /// The custom operations.
+    pub custom_ops: Vec<String>,
+}
+
+impl<'a, R: wesl::Resolver> SelectionBundleBuilder<'a, R> {
+    /// Create a new [`SelectionBundleBuilder`].
+    pub fn new() -> Self {
+        Self {
+            builder: ComputeBundleBuilder::new(),
+            custom_ops: Vec::new(),
+        }
+    }
+
+    /// Create a new [`SelectionBundleBuilder`] with a [`ComputeBundleBuilder`]
+    pub fn new_with_builder(builder: ComputeBundleBuilder<'a, R>) -> Self {
+        Self {
+            builder,
+            custom_ops: Vec::new(),
+        }
+    }
+
+    /// Set the builder.
+    pub fn builder<S: wesl::Resolver>(
+        self,
+        builder: ComputeBundleBuilder<'a, S>,
+    ) -> SelectionBundleBuilder<'a, S> {
+        SelectionBundleBuilder {
+            builder,
+            custom_ops: self.custom_ops,
+        }
+    }
+
+    /// Add a custom operation to the bundle.
+    pub fn custom_op(&mut self, op: String) -> &mut Self {
+        self.custom_ops.push(op);
+        self
+    }
+
+    /// Add custom operations to the bundle.
+    pub fn custom_ops(
+        mut self,
+        ops: impl IntoIterator<Item = String>,
+    ) -> SelectionBundleBuilder<'a, R> {
+        self.custom_ops.extend(ops);
+        self
+    }
+
+    /// Build the selection bundle.
+    pub fn build(
+        mut self,
+        device: &wgpu::Device,
+        buffers: impl IntoIterator<Item = impl IntoIterator<Item = &'a dyn BufferWrapper>>,
+    ) -> Result<SelectionBundle<wgpu::BindGroup>, Error> {
+        let Some(resolver) = std::mem::take(&mut self.builder.resolver) else {
+            return Err(Error::Core(core::Error::MissingResolver));
+        };
+
+        let builder = self.builder.resolver(DynResolver::new(resolver));
+
+        let bundle = builder.build(device, buffers)?;
+        Ok(SelectionBundle { bundle })
+    }
+
+    /// Build the compute bundle without bind groups.
+    pub fn build_without_bind_groups(
+        mut self,
+        device: &wgpu::Device,
+    ) -> Result<SelectionBundle<()>, Error> {
+        let Some(resolver) = std::mem::take(&mut self.builder.resolver) else {
+            return Err(Error::Core(core::Error::MissingResolver));
+        };
+
+        let builder = self.builder.resolver(DynResolver::new(resolver));
+
+        let bundle = builder.build_without_bind_groups(device)?;
+        Ok(SelectionBundle { bundle })
+    }
 }
