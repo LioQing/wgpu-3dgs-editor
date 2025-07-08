@@ -3,26 +3,28 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
 };
-
-@group(0) @binding(0)
-var<uniform> op: u32;
-
-@group(0) @binding(1)
-var<storage, read> source: array<u32>;
-
-@group(0) @binding(2)
-var<storage, read_write> dest: array<atomic<u32>>;
-
-@group(0) @binding(3)
-var<uniform> model_transform: ModelTransform;
-
-@group(0) @binding(4)
-var<uniform> gaussian_transform: GaussianTransform;
-
-@group(0) @binding(5)
-var<storage, read> gaussians: array<Gaussian>;
+import super::ops;
 
 override workgroup_size: u32;
+override gaussians_group_index: u32;
+
+@group(gaussians_group_index) @binding(0)
+var<uniform> op: u32;
+
+@group(gaussians_group_index) @binding(1)
+var<storage, read> source: array<u32>;
+
+@group(gaussians_group_index) @binding(2)
+var<storage, read_write> dest: array<atomic<u32>>;
+
+@group(gaussians_group_index) @binding(3)
+var<uniform> model_transform: ModelTransform;
+
+@group(gaussians_group_index) @binding(4)
+var<uniform> gaussian_transform: GaussianTransform;
+
+@group(gaussians_group_index) @binding(5)
+var<storage, read> gaussians: array<Gaussian>;
 
 @compute @workgroup_size(workgroup_size, 1, 1)
 fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
@@ -32,15 +34,15 @@ fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid
         return;
     }
 
-    if op == op_union {
-        atomicOr(&dest[index], mask);
-    } else if op == op_intersection {
-        atomicAnd(&dest[index], mask);
-    } else if op == op_symmetric_difference {
-        atomicXor(&dest[index], mask);
-    } else if op == op_difference {
-        atomicAnd(&dest[index], ~mask);
-    } else if op == op_complement {
+    if op == ops::union {
+        atomicOr(&dest[index], source[index]);
+    } else if op == ops::intersection {
+        atomicAnd(&dest[index], source[index]);
+    } else if op == ops::symmetric_difference {
+        atomicXor(&dest[index], source[index]);
+    } else if op == ops::difference {
+        atomicAnd(&dest[index], ~source[index]);
+    } else if op == ops::complement {
         atomicStore(&dest[index], ~atomicLoad(&dest[index]));
-    } // {{remaining_ops}}
+    } // {{custom_ops}}
 }
