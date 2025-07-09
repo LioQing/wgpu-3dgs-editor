@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use wgpu_3dgs_core::{BufferWrapper, ComputeBundleBuilder, wesl::DynResolver};
-
 use crate::{
-    Error,
-    core::{self, ComputeBundle},
+    Error, SelectionBuffer, SelectionOp, SelectionOpBuffer,
+    core::{
+        self, BufferWrapper, ComputeBundle, ComputeBundleBuilder, GaussianPod,
+        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer, wesl::DynResolver,
+    },
 };
 
 /// A selection operation expression tree.
@@ -63,6 +64,19 @@ impl SelectionOpExpr {
     pub fn binary(self, op: u32, other: Self) -> Self {
         Self::Binary(Box::new(self), op, Box::new(other))
     }
+
+    /// Get the [`SelectionOp`] associated with this expression.
+    pub fn selection_op(&self) -> SelectionOp {
+        match self {
+            SelectionOpExpr::Union(_, _) => SelectionOp::Union,
+            SelectionOpExpr::Intersection(_, _) => SelectionOp::Intersection,
+            SelectionOpExpr::Difference(_, _) => SelectionOp::Difference,
+            SelectionOpExpr::SymmetricDifference(_, _) => SelectionOp::SymmetricDifference,
+            SelectionOpExpr::Complement(_) => SelectionOp::Complement,
+            SelectionOpExpr::Unary(op, _) => SelectionOp::Custom(*op),
+            SelectionOpExpr::Binary(_, op, _) => SelectionOp::Custom(*op),
+        }
+    }
 }
 
 /// A specialized [`ComputeBundle`] for selection operations.
@@ -71,7 +85,15 @@ impl SelectionOpExpr {
 #[derive(Debug)]
 pub struct SelectionBundle<B = wgpu::BindGroup> {
     /// The compute bundle for selection operations.
-    pub bundle: ComputeBundle<B>,
+    pub bundle: ComputeBundle<()>,
+    /// The selection buffers.
+    ///
+    /// This is populated after the first evaluation.
+    pub selection_bufs: Vec<SelectionBuffer>,
+    /// The selection operation buffers.
+    ///
+    /// This is populated after the first evaluation.
+    pub selection_op_bufs: Vec<SelectionOpBuffer>,
     /// The custom operations.
     ///
     /// The operations are expected to be in the form of `"my_mod::my_op(arg1, arg2, ...)"`,
@@ -84,20 +106,207 @@ pub struct SelectionBundle<B = wgpu::BindGroup> {
     ///     - `gaussian_transform` - The Gaussian transform buffer.
     ///     - `gaussians` - The Gaussian buffer.
     /// - `index` - The current index.
-    pub custom_ops: HashMap<String, u32>,
+    custom_ops: HashMap<String, u32>,
+    /// The bind groups.
+    bind_groups: Vec<B>,
+}
+
+impl<B> SelectionBundle<B> {
+    /// Get teh Gaussians bind group index.
+    ///
+    /// This is the same as the last bind group index.
+    pub fn gaussians_bind_group_index(&self) -> usize {
+        self.bundle.bind_group_layouts().len() - 1
+    }
+
+    /// Get the Gaussians bind group layout.
+    pub fn gaussians_bind_group_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.bundle.bind_group_layouts()[self.gaussians_bind_group_index()]
+    }
+
+    /// Get the custom operations name to index map.
+    pub fn custom_ops(&self) -> &HashMap<String, u32> {
+        &self.custom_ops
+    }
+
+    /// Evaluate the selection operation expression with provided buffers.
+    pub fn evaluate_with_buffers<'a, G: GaussianPod>(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        expr: &SelectionOpExpr,
+        dest: &SelectionBuffer,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+        gaussians: &GaussiansBuffer<G>,
+        bind_groups: &[&'a wgpu::BindGroup],
+    ) {
+        let d = dest;
+        let m = model_transform;
+        let g = gaussian_transform;
+        let gs = gaussians;
+        let bgs = bind_groups;
+
+        let op = SelectionOpBuffer::new(device, expr.selection_op());
+        let source = SelectionBuffer::new(device, gaussians.len() as u32);
+
+        match expr {
+            SelectionOpExpr::Union(l, r) => {
+                self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
+                self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::Intersection(l, r) => {
+                self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
+                self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::Difference(l, r) => {
+                self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
+                self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::SymmetricDifference(l, r) => {
+                self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
+                self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::Complement(e) => {
+                self.evaluate_with_buffers(device, encoder, e, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::Unary(_, e) => {
+                self.evaluate_with_buffers(device, encoder, e, d, m, g, gs, bgs);
+            }
+            SelectionOpExpr::Binary(l, _, r) => {
+                self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
+                self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+        }
+
+        let bind_group = self
+            .bundle
+            .create_bind_group(
+                device,
+                self.gaussians_bind_group_index(),
+                [
+                    &op as &dyn BufferWrapper,
+                    &source as &dyn BufferWrapper,
+                    d as &dyn BufferWrapper,
+                    m as &dyn BufferWrapper,
+                    g as &dyn BufferWrapper,
+                    gs as &dyn BufferWrapper,
+                ],
+            )
+            .expect("bind group");
+
+        self.bundle.dispatch(
+            encoder,
+            gaussians.len() as u32,
+            [bgs, &[&bind_group]].concat(),
+        );
+    }
 }
 
 impl SelectionBundle {
+    /// Create a new selection bundle.
+    pub fn new<'a>(
+        device: &wgpu::Device,
+        bundle: ComputeBundle<()>,
+        custom_ops: HashMap<String, u32>,
+        buffers: impl IntoIterator<Item = impl IntoIterator<Item = &'a dyn BufferWrapper>>,
+    ) -> Result<Self, Error> {
+        let buffers = buffers.into_iter().collect::<Vec<_>>();
+
+        if buffers.len() == bundle.bind_group_layouts().len() {
+            return Err(Error::Core(
+                core::Error::BufferBindGroupLayoutCountMismatch {
+                    buffer_count: buffers.len(),
+                    bind_group_layout_count: bundle.bind_group_layouts().len(),
+                },
+            ));
+        }
+
+        let bind_groups = buffers
+            .into_iter()
+            .enumerate()
+            .map(|(i, buffers)| {
+                bundle
+                    .create_bind_group(device, i, buffers)
+                    .expect("bind group layout exists for the buffer")
+            })
+            .collect::<Vec<_>>();
+
+        Ok(Self {
+            bundle,
+            selection_bufs: Vec::new(),
+            selection_op_bufs: Vec::new(),
+            custom_ops,
+            bind_groups,
+        })
+    }
+
+    /// Get the Gaussians bind group.
+    pub fn gaussians_bind_group(&self) -> &wgpu::BindGroup {
+        &self.bind_groups[self.gaussians_bind_group_index()]
+    }
+
     /// Evaluate the selection operation expression.
-    pub fn evaluate(&self, expr: SelectionOpExpr) {
-        unimplemented!()
+    pub fn evaluate<G: GaussianPod>(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        expr: &SelectionOpExpr,
+        dest: &SelectionBuffer,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+        gaussians: &GaussiansBuffer<G>,
+    ) {
+        self.evaluate_with_buffers(
+            device,
+            encoder,
+            expr,
+            dest,
+            model_transform,
+            gaussian_transform,
+            gaussians,
+            &self.bind_groups.iter().collect::<Vec<_>>(),
+        );
     }
 }
 
 impl SelectionBundle<()> {
+    /// Create a new selection bundle without bind groups.
+    pub fn new_without_bind_groups(
+        bundle: ComputeBundle<()>,
+        custom_ops: HashMap<String, u32>,
+    ) -> Self {
+        Self {
+            bundle,
+            selection_bufs: Vec::new(),
+            selection_op_bufs: Vec::new(),
+            custom_ops,
+            bind_groups: Vec::new(),
+        }
+    }
+
     /// Evaluate the selection operation expression.
-    pub fn evaluate(&self, expr: SelectionOpExpr, bind_group: &wgpu::BindGroup) {
-        unimplemented!()
+    pub fn evaluate<'a, G: GaussianPod>(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        expr: &SelectionOpExpr,
+        dest: &SelectionBuffer,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+        gaussians: &GaussiansBuffer<G>,
+        bind_groups: impl IntoIterator<Item = &'a wgpu::BindGroup>,
+    ) {
+        self.evaluate_with_buffers(
+            device,
+            encoder,
+            expr,
+            dest,
+            model_transform,
+            gaussian_transform,
+            gaussians,
+            &bind_groups.into_iter().collect::<Vec<_>>(),
+        );
     }
 }
 
@@ -260,14 +469,15 @@ impl<'a, R: wesl::Resolver> SelectionBundleBuilder<'a, R> {
             .bind_group_layouts
             .push(&Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR);
 
-        let bundle = builder.build(device, buffers)?;
+        let bundle = builder.build_without_bind_groups(device)?;
         let custom_ops = self
             .custom_ops
             .into_iter()
             .enumerate()
             .map(|(i, op)| (op, i as u32 + 4)) // Custom ops start at 4
             .collect();
-        Ok(SelectionBundle { bundle, custom_ops })
+
+        SelectionBundle::new(device, bundle, custom_ops, buffers)
     }
 
     /// Build the compute bundle without bind groups.
@@ -305,7 +515,8 @@ impl<'a, R: wesl::Resolver> SelectionBundleBuilder<'a, R> {
             .enumerate()
             .map(|(i, op)| (op, i as u32 + 4)) // Custom ops start at 4
             .collect();
-        Ok(SelectionBundle { bundle, custom_ops })
+
+        Ok(SelectionBundle::new_without_bind_groups(bundle, custom_ops))
     }
 
     /// The entry shader [`wesl::ModulePath`].
