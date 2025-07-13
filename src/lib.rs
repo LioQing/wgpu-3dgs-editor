@@ -3,6 +3,7 @@
 mod buffer;
 mod error;
 mod selection;
+pub mod shader;
 
 pub use buffer::*;
 pub use error::*;

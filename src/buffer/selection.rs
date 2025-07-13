@@ -93,10 +93,10 @@ pub struct SelectionOpBuffer(wgpu::Buffer);
 
 impl SelectionOpBuffer {
     /// Create a new selection operation buffer.
-    pub fn new(device: &wgpu::Device, op: SelectionOp) -> Self {
+    pub fn new(device: &wgpu::Device, op: u32) -> Self {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Mask Operation Buffer"),
-            contents: bytemuck::bytes_of(&(op.as_u32())),
+            contents: bytemuck::bytes_of(&op),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -104,40 +104,13 @@ impl SelectionOpBuffer {
     }
 
     /// Update the selection operation buffer.
-    pub fn update(&self, queue: &wgpu::Queue, op: SelectionOp) {
-        queue.write_buffer(&self.0, 0, bytemuck::bytes_of(&(op.as_u32())));
+    pub fn update(&self, queue: &wgpu::Queue, op: u32) {
+        queue.write_buffer(&self.0, 0, bytemuck::bytes_of(&op));
     }
 }
 
 impl BufferWrapper for SelectionOpBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
-    }
-}
-
-/// The selection operation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SelectionOp {
-    Union,
-    Intersection,
-    SymmetricDifference,
-    Difference,
-    Complement,
-    /// From either [`SelectionOpExpr::Unary`](crate::SelectionOpExpr::Unary) or
-    /// [`SelectionOpExpr::Binary`](crate::SelectionOpExpr::Binary).
-    Custom(u32),
-}
-
-impl SelectionOp {
-    /// Get the selection operation as a u32.
-    pub fn as_u32(&self) -> u32 {
-        match self {
-            SelectionOp::Union => 0,
-            SelectionOp::Intersection => 1,
-            SelectionOp::SymmetricDifference => 2,
-            SelectionOp::Difference => 3,
-            SelectionOp::Complement => 4,
-            SelectionOp::Custom(op) => *op,
-        }
     }
 }
