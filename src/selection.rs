@@ -29,6 +29,9 @@ pub enum SelectionOpExpr {
 }
 
 impl SelectionOpExpr {
+    /// The first u32 value for a custom operation.
+    pub const CUSTOM_OP_START: u32 = 5;
+
     /// Create a new [`SelectionOpExpr::Union`].
     pub fn union(self, other: Self) -> Self {
         Self::Union(Box::new(self), Box::new(other))
@@ -87,6 +90,23 @@ impl SelectionOpExpr {
                 | SelectionOpExpr::SymmetricDifference(_, _)
                 | SelectionOpExpr::Complement(_)
         )
+    }
+
+    /// Whether this expression is a custom operation.
+    pub fn is_custom(&self) -> bool {
+        matches!(
+            self,
+            SelectionOpExpr::Unary(_, _) | SelectionOpExpr::Binary(_, _, _)
+        )
+    }
+
+    /// Get the custom operation index, which is its value minus [`SelectionOpExpr::CUSTOM_OP_START`].
+    pub fn custom_op_index(&self) -> Option<u32> {
+        match self {
+            SelectionOpExpr::Unary(op, _) => Some(*op - Self::CUSTOM_OP_START),
+            SelectionOpExpr::Binary(_, op, _) => Some(*op - Self::CUSTOM_OP_START),
+            _ => None,
+        }
     }
 }
 
@@ -212,13 +232,13 @@ impl<B> SelectionBundle<B> {
             )
             .expect("gaussians bind group");
 
-        match expr.is_primitive() {
-            true => self.primitive_bundle.dispatch(
+        match expr.custom_op_index() {
+            None => self.primitive_bundle.dispatch(
                 encoder,
                 gaussians.len() as u32,
                 [&gaussians_bind_group],
             ),
-            false => {
+            Some(i) => {
                 let bind_groups = std::iter::once(&gaussians_bind_group).chain(
                     bgs.get(expr.as_u32() as usize - 5)
                         .expect("bind group")
@@ -226,7 +246,7 @@ impl<B> SelectionBundle<B> {
                         .copied(),
                 );
 
-                let bundle = &self.bundles[expr.as_u32() as usize - 5];
+                let bundle = &self.bundles[i as usize];
 
                 bundle.dispatch(encoder, gaussians.len() as u32, bind_groups);
             }
