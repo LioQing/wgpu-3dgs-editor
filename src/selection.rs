@@ -7,76 +7,92 @@ use crate::{
     shader,
 };
 
-/// A selection operation expression tree.
+/// A selection expression tree.
 ///
 /// This can be used to carry out operations on selection buffers.
 #[derive(Debug)]
-pub enum SelectionOpExpr {
+pub enum SelectionExpr {
     /// Union of the two selections.
-    Union(Box<SelectionOpExpr>, Box<SelectionOpExpr>),
+    Union(Box<SelectionExpr>, Box<SelectionExpr>),
     /// Interaction of the two selections.
-    Intersection(Box<SelectionOpExpr>, Box<SelectionOpExpr>),
+    Intersection(Box<SelectionExpr>, Box<SelectionExpr>),
     /// Difference of the two selections.
-    Difference(Box<SelectionOpExpr>, Box<SelectionOpExpr>),
+    Difference(Box<SelectionExpr>, Box<SelectionExpr>),
     /// Symmetric difference of the two selections.
-    SymmetricDifference(Box<SelectionOpExpr>, Box<SelectionOpExpr>),
+    SymmetricDifference(Box<SelectionExpr>, Box<SelectionExpr>),
     /// Complement of the selection.
-    Complement(Box<SelectionOpExpr>),
+    Complement(Box<SelectionExpr>),
     /// Apply a custom unary operation.
-    Unary(u32, Box<SelectionOpExpr>),
+    Unary(u32, Box<SelectionExpr>),
     /// Apply a custom binary operation.
-    Binary(Box<SelectionOpExpr>, u32, Box<SelectionOpExpr>),
+    Binary(Box<SelectionExpr>, u32, Box<SelectionExpr>),
+    /// Create a selection.
+    Selection(u32),
+    /// Use a selection buffer.
+    Buffer(SelectionBuffer),
 }
 
-impl SelectionOpExpr {
+impl SelectionExpr {
     /// The first u32 value for a custom operation.
     pub const CUSTOM_OP_START: u32 = 5;
 
-    /// Create a new [`SelectionOpExpr::Union`].
+    /// Create a new [`SelectionExpr::Union`].
     pub fn union(self, other: Self) -> Self {
         Self::Union(Box::new(self), Box::new(other))
     }
 
-    /// Create a new [`SelectionOpExpr::Intersection`].
+    /// Create a new [`SelectionExpr::Intersection`].
     pub fn intersection(self, other: Self) -> Self {
         Self::Intersection(Box::new(self), Box::new(other))
     }
 
-    /// Create a new [`SelectionOpExpr::Difference`].
+    /// Create a new [`SelectionExpr::Difference`].
     pub fn difference(self, other: Self) -> Self {
         Self::Difference(Box::new(self), Box::new(other))
     }
 
-    /// Create a new [`SelectionOpExpr::SymmetricDifference`].
+    /// Create a new [`SelectionExpr::SymmetricDifference`].
     pub fn symmetric_difference(self, other: Self) -> Self {
         Self::SymmetricDifference(Box::new(self), Box::new(other))
     }
 
-    /// Create a new [`SelectionOpExpr::Complement`].
+    /// Create a new [`SelectionExpr::Complement`].
     pub fn complement(self) -> Self {
         Self::Complement(Box::new(self))
     }
 
-    /// Create a new [`SelectionOpExpr::Unary`].
+    /// Create a new [`SelectionExpr::Unary`].
     pub fn unary(self, op: u32) -> Self {
         Self::Unary(op, Box::new(self))
     }
 
-    /// Create a new [`SelectionOpExpr::Binary`].
+    /// Create a new [`SelectionExpr::Binary`].
     pub fn binary(self, op: u32, other: Self) -> Self {
         Self::Binary(Box::new(self), op, Box::new(other))
     }
 
+    /// Create a new [`SelectionExpr::Selection`].
+    pub fn selection(op: u32) -> Self {
+        Self::Selection(op)
+    }
+
+    /// Create a new [`SelectionExpr::Buffer`].
+    pub fn buffer(buffer: SelectionBuffer) -> Self {
+        Self::Buffer(buffer)
+    }
+
     /// Get the u32 associated with this expression's operation.
-    pub fn as_u32(&self) -> u32 {
+    pub fn as_u32(&self) -> Option<u32> {
         match self {
-            SelectionOpExpr::Union(_, _) => 0,
-            SelectionOpExpr::Intersection(_, _) => 1,
-            SelectionOpExpr::Difference(_, _) => 2,
-            SelectionOpExpr::SymmetricDifference(_, _) => 3,
-            SelectionOpExpr::Complement(_) => 4,
-            SelectionOpExpr::Unary(op, _) => *op,
-            SelectionOpExpr::Binary(_, op, _) => *op,
+            SelectionExpr::Union(_, _) => Some(0),
+            SelectionExpr::Intersection(_, _) => Some(1),
+            SelectionExpr::Difference(_, _) => Some(2),
+            SelectionExpr::SymmetricDifference(_, _) => Some(3),
+            SelectionExpr::Complement(_) => Some(4),
+            SelectionExpr::Unary(op, _) => Some(*op),
+            SelectionExpr::Binary(_, op, _) => Some(*op),
+            SelectionExpr::Selection(op) => Some(*op),
+            SelectionExpr::Buffer(_) => None,
         }
     }
 
@@ -84,11 +100,11 @@ impl SelectionOpExpr {
     pub fn is_primitive(&self) -> bool {
         matches!(
             self,
-            SelectionOpExpr::Union(_, _)
-                | SelectionOpExpr::Intersection(_, _)
-                | SelectionOpExpr::Difference(_, _)
-                | SelectionOpExpr::SymmetricDifference(_, _)
-                | SelectionOpExpr::Complement(_)
+            SelectionExpr::Union(..)
+                | SelectionExpr::Intersection(..)
+                | SelectionExpr::Difference(..)
+                | SelectionExpr::SymmetricDifference(..)
+                | SelectionExpr::Complement(..)
         )
     }
 
@@ -96,15 +112,36 @@ impl SelectionOpExpr {
     pub fn is_custom(&self) -> bool {
         matches!(
             self,
-            SelectionOpExpr::Unary(_, _) | SelectionOpExpr::Binary(_, _, _)
+            SelectionExpr::Unary(..) | SelectionExpr::Binary(..) | SelectionExpr::Selection(..)
         )
     }
 
-    /// Get the custom operation index, which is its value minus [`SelectionOpExpr::CUSTOM_OP_START`].
+    /// Whether this expression is a selection operation.
+    pub fn is_operation(&self) -> bool {
+        matches!(
+            self,
+            SelectionExpr::Union(..)
+                | SelectionExpr::Intersection(..)
+                | SelectionExpr::Difference(..)
+                | SelectionExpr::SymmetricDifference(..)
+                | SelectionExpr::Complement(..)
+                | SelectionExpr::Unary(..)
+                | SelectionExpr::Binary(..)
+                | SelectionExpr::Selection(..)
+        )
+    }
+
+    /// Whether this expression is a selection buffer.
+    pub fn is_buffer(&self) -> bool {
+        matches!(self, SelectionExpr::Buffer(_))
+    }
+
+    /// Get the custom operation index, which is its value minus [`SelectionExpr::CUSTOM_OP_START`].
     pub fn custom_op_index(&self) -> Option<u32> {
         match self {
-            SelectionOpExpr::Unary(op, _) => Some(*op - Self::CUSTOM_OP_START),
-            SelectionOpExpr::Binary(_, op, _) => Some(*op - Self::CUSTOM_OP_START),
+            SelectionExpr::Unary(op, _) => Some(*op - Self::CUSTOM_OP_START),
+            SelectionExpr::Binary(_, op, _) => Some(*op - Self::CUSTOM_OP_START),
+            SelectionExpr::Selection(op) => Some(*op - Self::CUSTOM_OP_START),
             _ => None,
         }
     }
@@ -112,13 +149,12 @@ impl SelectionOpExpr {
 
 /// A specialized [`ComputeBundle`] for selection operations.
 ///
-/// All [`ComputeBundle`]s supplied to this bundle as a [`SelectionOpExpr::Unary`] or
-/// [`SelectionOpExpr::Binary`] must have the same bind group 0 as the
+/// All [`ComputeBundle`]s supplied to this bundle as a [`SelectionExpr::Unary`] or
+/// [`SelectionExpr::Binary`] must have the same bind group 0 as the
 /// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
 ///
 /// ```wgsl
 /// import wgpu_3dgs_core::{
-///     compute_bundle,
 ///     gaussian::Gaussian,
 ///     gaussian_transform::GaussianTransform,
 ///     model_transform::ModelTransform,
@@ -166,53 +202,68 @@ impl<B> SelectionBundle<B> {
         &self.primitive_bundle.bind_group_layouts()[0]
     }
 
-    /// Evaluate the selection operation expression with provided buffers.
+    /// Evaluate the selection expression with provided buffers.
     pub fn evaluate_with_buffers<'a, G: GaussianPod>(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
-        expr: &SelectionOpExpr,
+        expr: &SelectionExpr,
         dest: &SelectionBuffer,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
         gaussians: &GaussiansBuffer<G>,
-        bind_groups: &[Vec<&'a wgpu::BindGroup>],
+        bind_groups: &[&[&'a wgpu::BindGroup]],
     ) {
+        if let SelectionExpr::Buffer(buffer) = expr {
+            encoder.copy_buffer_to_buffer(
+                &buffer.buffer(),
+                0,
+                &dest.buffer(),
+                0,
+                dest.buffer().size(),
+            );
+            return;
+        }
+
         let d = dest;
         let m = model_transform;
         let g = gaussian_transform;
         let gs = gaussians;
         let bgs = bind_groups;
 
-        let op = SelectionOpBuffer::new(device, expr.as_u32());
+        let op = SelectionOpBuffer::new(device, expr.as_u32().expect("operation expression"));
         let source = SelectionBuffer::new(device, gaussians.len() as u32);
 
         match expr {
-            SelectionOpExpr::Union(l, r) => {
+            SelectionExpr::Union(l, r) => {
                 self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
                 self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::Intersection(l, r) => {
+            SelectionExpr::Intersection(l, r) => {
                 self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
                 self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::Difference(l, r) => {
+            SelectionExpr::Difference(l, r) => {
                 self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
                 self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::SymmetricDifference(l, r) => {
+            SelectionExpr::SymmetricDifference(l, r) => {
                 self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
                 self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::Complement(e) => {
+            SelectionExpr::Complement(e) => {
                 self.evaluate_with_buffers(device, encoder, e, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::Unary(_, e) => {
+            SelectionExpr::Unary(_, e) => {
                 self.evaluate_with_buffers(device, encoder, e, d, m, g, gs, bgs);
             }
-            SelectionOpExpr::Binary(l, _, r) => {
+            SelectionExpr::Binary(l, _, r) => {
                 self.evaluate_with_buffers(device, encoder, l, &source, m, g, gs, bgs);
                 self.evaluate_with_buffers(device, encoder, r, d, m, g, gs, bgs);
+            }
+            SelectionExpr::Selection(_) => {}
+            SelectionExpr::Buffer(_) => {
+                unreachable!();
             }
         }
 
@@ -240,7 +291,7 @@ impl<B> SelectionBundle<B> {
             ),
             Some(i) => {
                 let bind_groups = std::iter::once(&gaussians_bind_group).chain(
-                    bgs.get(expr.as_u32() as usize - 5)
+                    bgs.get(expr.as_u32().expect("operation expression") as usize - 5)
                         .expect("bind group")
                         .iter()
                         .copied(),
@@ -378,17 +429,23 @@ impl SelectionBundle {
         })
     }
 
-    /// Evaluate the selection operation expression.
+    /// Evaluate the selection expression.
     pub fn evaluate<G: GaussianPod>(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
-        expr: &SelectionOpExpr,
+        expr: &SelectionExpr,
         dest: &SelectionBuffer,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
         gaussians: &GaussiansBuffer<G>,
     ) {
+        let bind_groups = self
+            .bind_groups
+            .iter()
+            .map(|groups| groups.iter().collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+
         self.evaluate_with_buffers(
             device,
             encoder,
@@ -397,9 +454,9 @@ impl SelectionBundle {
             model_transform,
             gaussian_transform,
             gaussians,
-            self.bind_groups
+            bind_groups
                 .iter()
-                .map(|groups| groups.iter().collect::<Vec<_>>())
+                .map(Vec::as_slice)
                 .collect::<Vec<_>>()
                 .as_slice(),
         );
@@ -433,17 +490,17 @@ impl SelectionBundle<()> {
         }
     }
 
-    /// Evaluate the selection operation expression.
+    /// Evaluate the selection expression.
     pub fn evaluate<'a, G: GaussianPod>(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
-        expr: &SelectionOpExpr,
+        expr: &SelectionExpr,
         dest: &SelectionBuffer,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
         gaussians: &GaussiansBuffer<G>,
-        bind_groups: &[Vec<&'a wgpu::BindGroup>],
+        bind_groups: &[&[&'a wgpu::BindGroup]],
     ) {
         self.evaluate_with_buffers(
             device,
