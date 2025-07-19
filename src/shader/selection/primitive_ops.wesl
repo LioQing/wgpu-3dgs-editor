@@ -34,15 +34,15 @@ fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid
         return;
     }
 
-    if op == ops::union {
+    if op == ops::op_union {
         atomicOr(&dest[index], source[index]);
-    } else if op == ops::intersection {
+    } else if op == ops::op_intersection {
         atomicAnd(&dest[index], source[index]);
-    } else if op == ops::symmetric_difference {
+    } else if op == ops::op_symmetric_difference {
         atomicXor(&dest[index], source[index]);
-    } else if op == ops::difference {
+    } else if op == ops::op_difference {
         atomicAnd(&dest[index], ~source[index]);
-    } else if op == ops::complement {
+    } else if op == ops::op_complement {
         atomicStore(&dest[index], ~atomicLoad(&dest[index]));
     }
 }

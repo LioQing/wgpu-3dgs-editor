@@ -61,3 +61,68 @@ impl BufferWrapper for SelectionOpBuffer {
         &self.0
     }
 }
+
+/// An inverse transform uniform buffer for selection operations.
+///
+/// This is the base for [`selection::sphere`], [`selection::box_`], and [`selection::cone`].
+#[derive(Debug, Clone)]
+pub struct InvTransformBuffer(wgpu::Buffer);
+
+impl InvTransformBuffer {
+    /// Create a new inverse transform buffer.
+    pub fn new(device: &wgpu::Device) -> Self {
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Inverse Transform Buffer"),
+            size: std::mem::size_of::<Mat4>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        Self(buffer)
+    }
+
+    /// Update the inverse transform buffer.
+    pub fn update(&self, queue: &wgpu::Queue, inv_transform: Mat4) {
+        queue.write_buffer(&self.0, 0, bytemuck::bytes_of(&inv_transform));
+    }
+}
+
+impl BufferWrapper for InvTransformBuffer {
+    fn buffer(&self) -> &wgpu::Buffer {
+        &self.0
+    }
+}
+
+/// The sphere selection uniform buffer.
+#[derive(Debug, Clone)]
+pub struct SphereSelectionBuffer(InvTransformBuffer);
+
+impl SphereSelectionBuffer {
+    /// Create a new sphere selection buffer.
+    pub fn new(device: &wgpu::Device) -> Self {
+        Self(InvTransformBuffer::new(device))
+    }
+
+    /// Update the sphere selection buffer.
+    pub fn update(&self, queue: &wgpu::Queue, inv_transform: Mat4) {
+        self.0.update(queue, inv_transform);
+    }
+
+    /// Update the sphere selection buffer with the position, rotation, and radii.
+    pub fn update_with_pos_rot_radii(
+        &self,
+        queue: &wgpu::Queue,
+        pos: Vec3,
+        rot: Quat,
+        radii: Vec3,
+    ) {
+        let inv_transform = Mat4::from_scale_rotation_translation(radii, rot, pos).inverse();
+        self.update(queue, inv_transform);
+    }
+}
+
+impl BufferWrapper for SphereSelectionBuffer {
+    fn buffer(&self) -> &wgpu::Buffer {
+        self.0.buffer()
+    }
+}
