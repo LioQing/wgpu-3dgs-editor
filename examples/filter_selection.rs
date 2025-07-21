@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use glam::*;
 
 use wgpu_3dgs_core::{DownloadableBufferWrapper, GaussianPodWithShSingleCov3dSingleConfigs};
@@ -22,7 +22,7 @@ struct Args {
     #[arg(short, long, default_value = "target/output.ply")]
     output: String,
 
-    /// The radii of the selection.
+    /// The position of the selection shape.
     #[arg(
         short,
         long,
@@ -30,19 +30,19 @@ struct Args {
         value_delimiter = ',',
         default_value = "0.0,0.0,0.0"
     )]
-    pos: Vec<f32>,
+    position: Vec<f32>,
 
-    /// The radii of the selection.
+    /// The rotation of the selection shape.
     #[arg(
         short,
         long,
         num_args = 4,
         value_delimiter = ',',
-        default_value = "-0.324783,-0.324783,-0.1623915,-0.8733046"
+        default_value = "0.0,0.0,0.0,1.0"
     )]
-    rot: Vec<f32>,
+    rotation: Vec<f32>,
 
-    /// The radii/scale of the selection.
+    /// The scale of the selection shape.
     #[arg(
         short,
         long,
@@ -51,6 +51,10 @@ struct Args {
         default_value = "0.5,1.0,2.0"
     )]
     scale: Vec<f32>,
+
+    /// The shape of the selection.
+    #[arg(long, value_enum, default_value_t = Shape::Sphere, ignore_case = true)]
+    shape: Shape,
 
     /// The number of times to run the selection.
     #[arg(long, default_value = "1")]
@@ -66,6 +70,12 @@ struct Args {
     offset: Vec<f32>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Shape {
+    Sphere,
+    Box,
+}
+
 type GaussianPod = GaussianPodWithShSingleCov3dSingleConfigs;
 
 #[tokio::main]
@@ -74,9 +84,13 @@ async fn main() {
 
     let args = Args::parse();
     let model_path = &args.model;
-    let position = Vec3::from_slice(&args.pos);
-    let rotation = Quat::from_slice(&args.rot);
+    let position = Vec3::from_slice(&args.position);
+    let rotation = Quat::from_slice(&args.rotation);
     let scale = Vec3::from_slice(&args.scale);
+    let shape = match args.shape {
+        Shape::Sphere => gs::ops::sphere::<GaussianPod>,
+        Shape::Box => gs::ops::r#box::<GaussianPod>,
+    };
     let repeat = args.repeat;
     let offset = Vec3::from_slice(&args.offset);
 
@@ -116,24 +130,24 @@ async fn main() {
     log::debug!("Creating Gaussian transform buffer");
     let gaussian_transform = gs::core::GaussianTransformBuffer::new(&device);
 
-    log::debug!("Creating sphere selection compute bundle");
-    let sphere_selection = gs::ops::sphere::<GaussianPod>(&device);
+    log::debug!("Creating shape selection compute bundle");
+    let shape_selection = shape(&device);
 
     log::debug!("Creating selection bundle");
-    let selection_bundle = gs::SelectionBundle::new::<GaussianPod>(&device, vec![sphere_selection]);
+    let selection_bundle = gs::SelectionBundle::new::<GaussianPod>(&device, vec![shape_selection]);
 
-    log::debug!("Creating sphere selection buffers");
-    let sphere_selection_buffers = (0..repeat)
+    log::debug!("Creating shape selection buffers");
+    let shape_selection_buffers = (0..repeat)
         .map(|i| {
             let offset_pos = position + offset * i as f32;
-            let buffer = gs::SphereSelectionBuffer::new(&device);
+            let buffer = gs::InvTransformBuffer::new(&device);
             buffer.update_with_scale_rotation_position(&queue, scale, rotation, offset_pos);
             buffer
         })
         .collect::<Vec<_>>();
 
-    log::debug!("Creating sphere selection bind groups");
-    let sphere_selection_bind_groups = sphere_selection_buffers
+    log::debug!("Creating shape selection bind groups");
+    let shape_selection_bind_groups = shape_selection_buffers
         .iter()
         .map(|buffer| {
             selection_bundle.bundles[0]
@@ -143,7 +157,7 @@ async fn main() {
         .collect::<Vec<_>>();
 
     log::debug!("Creating selection expression");
-    let selection_expr = sphere_selection_bind_groups
+    let selection_expr = shape_selection_bind_groups
         .into_iter()
         .fold(gs::SelectionExpr::Identity, |acc, bind_group| {
             acc.union(gs::SelectionExpr::selection(0, vec![bind_group]))

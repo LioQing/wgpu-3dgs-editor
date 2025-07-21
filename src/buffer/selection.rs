@@ -42,7 +42,7 @@ impl SelectionOpBuffer {
     /// Create a new selection operation buffer.
     pub fn new(device: &wgpu::Device, op: u32) -> Self {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Mask Operation Buffer"),
+            label: Some("Selection Operation Buffer"),
             contents: bytemuck::bytes_of(&op),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
@@ -63,10 +63,6 @@ impl BufferWrapper for SelectionOpBuffer {
 }
 
 /// An inverse transform uniform buffer for selection operations.
-///
-/// This is the base for [`ops::sphere`](crate::ops::sphere),
-/// [`selection::box_`](crate::ops::box_),
-/// and [`selection::cone`](crate::ops::cone).
 #[derive(Debug, Clone)]
 pub struct InvTransformBuffer(wgpu::Buffer);
 
@@ -87,36 +83,14 @@ impl InvTransformBuffer {
     pub fn update(&self, queue: &wgpu::Queue, inv_transform: Mat4) {
         queue.write_buffer(&self.0, 0, bytemuck::bytes_of(&inv_transform));
     }
-}
-
-impl BufferWrapper for InvTransformBuffer {
-    fn buffer(&self) -> &wgpu::Buffer {
-        &self.0
-    }
-}
-
-/// The sphere selection uniform buffer.
-#[derive(Debug, Clone)]
-pub struct SphereSelectionBuffer(InvTransformBuffer);
-
-impl SphereSelectionBuffer {
-    /// Create a new sphere selection buffer.
-    pub fn new(device: &wgpu::Device) -> Self {
-        Self(InvTransformBuffer::new(device))
-    }
-
-    /// Update the sphere selection buffer.
-    pub fn update(&self, queue: &wgpu::Queue, inv_transform: Mat4) {
-        self.0.update(queue, inv_transform);
-    }
 
     /// Update the sphere selection buffer with the scale, rotation, and position.
     pub fn update_with_scale_rotation_position(
         &self,
         queue: &wgpu::Queue,
-        position: Vec3,
-        rotation: Quat,
         scale: Vec3,
+        rotation: Quat,
+        position: Vec3,
     ) {
         let inv_transform =
             Mat4::from_scale_rotation_translation(scale, rotation, position).inverse();
@@ -124,8 +98,8 @@ impl SphereSelectionBuffer {
     }
 }
 
-impl BufferWrapper for SphereSelectionBuffer {
+impl BufferWrapper for InvTransformBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
-        self.0.buffer()
+        &self.0
     }
 }

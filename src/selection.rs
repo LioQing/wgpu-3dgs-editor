@@ -505,4 +505,50 @@ pub mod ops {
             .map_err(|e| log::error!("{e}"))
             .expect("sphere selection compute bundle")
     }
+
+    /// The box selection bind group layout descriptor.
+    pub const BOX_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
+        wgpu::BindGroupLayoutDescriptor {
+            label: Some("Box Selection Bind Group Layout"),
+            entries: &[
+                // Box uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        };
+
+    /// Create a box selection operation.
+    ///
+    /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    /// - Bind group 1 is [`BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    pub fn r#box<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+        let mut resolver = wesl::PkgResolver::new();
+        resolver.add_package(&core::shader::Mod);
+        resolver.add_package(&shader::Mod);
+
+        ComputeBundleBuilder::new()
+            .label("Box Selection")
+            .bind_groups([
+                &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                &BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
+            ])
+            .main_shader(package_module_path!(wgpu_3dgs_editor::selection::box))
+            .entry_point("main")
+            .compile_options(wesl::CompileOptions {
+                features: G::features_map(),
+                ..Default::default()
+            })
+            .resolver(resolver)
+            .build_without_bind_groups(device)
+            .map_err(|e| log::error!("{e}"))
+            .expect("box selection compute bundle")
+    }
 }
