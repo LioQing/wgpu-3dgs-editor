@@ -19,7 +19,7 @@ struct Args {
     model: String,
 
     /// The output path for the modified .ply file.
-    #[arg(short, long, default_value = "output.ply")]
+    #[arg(short, long, default_value = "target/output.ply")]
     output: String,
 
     /// The radii of the selection.
@@ -48,7 +48,7 @@ struct Args {
         long,
         num_args = 3,
         value_delimiter = ',',
-        default_value = "3.0,4.0,5.0"
+        default_value = "0.5,1.0,2.0"
     )]
     scale: Vec<f32>,
 
@@ -104,7 +104,7 @@ async fn main() {
     log::debug!("Creating gaussians");
     let f = std::fs::File::open(model_path).expect("ply file");
     let mut reader = std::io::BufReader::new(f);
-    let mut gaussians = gs::core::Gaussians::read_ply(&mut reader).expect("gaussians");
+    let gaussians = gs::core::Gaussians::read_ply(&mut reader).expect("gaussians");
 
     log::debug!("Creating gaussians buffer");
     let gaussians_buffer =
@@ -175,22 +175,24 @@ async fn main() {
         .await
         .expect("selected download");
 
-    gaussians.gaussians = selected_download
-        .iter()
-        .flat_map(|group| {
-            std::iter::repeat_n(group, 32)
-                .enumerate()
-                .map(|(i, g)| g & (1 << i) != 0)
-        })
-        .zip(gaussians.gaussians.into_iter())
-        .filter(|(selected, _)| *selected)
-        .map(|(_, g)| g)
-        .collect::<Vec<_>>();
+    let selected_gaussians = gs::core::Gaussians {
+        gaussians: selected_download
+            .iter()
+            .flat_map(|group| {
+                std::iter::repeat_n(group, 32)
+                    .enumerate()
+                    .map(|(i, g)| g & (1 << i) != 0)
+            })
+            .zip(gaussians.gaussians.iter())
+            .filter(|(selected, _)| *selected)
+            .map(|(_, g)| g.clone())
+            .collect::<Vec<_>>(),
+    };
 
     log::debug!("Writing modified Gaussians to output file");
     let output_file = std::fs::File::create(&args.output).expect("output file");
     let mut writer = std::io::BufWriter::new(output_file);
-    gaussians
+    selected_gaussians
         .write_ply(&mut writer)
         .expect("write modified Gaussians to output file");
 }

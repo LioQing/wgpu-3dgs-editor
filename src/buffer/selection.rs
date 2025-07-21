@@ -64,7 +64,9 @@ impl BufferWrapper for SelectionOpBuffer {
 
 /// An inverse transform uniform buffer for selection operations.
 ///
-/// This is the base for [`selection::sphere`], [`selection::box_`], and [`selection::cone`].
+/// This is the base for [`ops::sphere`](crate::ops::sphere),
+/// [`selection::box_`](crate::ops::box_),
+/// and [`selection::cone`](crate::ops::cone).
 #[derive(Debug, Clone)]
 pub struct InvTransformBuffer(wgpu::Buffer);
 
