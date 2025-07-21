@@ -74,9 +74,9 @@ async fn main() {
 
     let args = Args::parse();
     let model_path = &args.model;
-    let pos = Vec3::from_slice(&args.pos);
-    let rot = Quat::from_slice(&args.rot);
-    let radii = Vec3::from_slice(&args.scale);
+    let position = Vec3::from_slice(&args.pos);
+    let rotation = Quat::from_slice(&args.rot);
+    let scale = Vec3::from_slice(&args.scale);
     let repeat = args.repeat;
     let offset = Vec3::from_slice(&args.offset);
 
@@ -125,9 +125,9 @@ async fn main() {
     log::debug!("Creating sphere selection buffers");
     let sphere_selection_buffers = (0..repeat)
         .map(|i| {
-            let offset_pos = pos + offset * i as f32;
+            let offset_pos = position + offset * i as f32;
             let buffer = gs::SphereSelectionBuffer::new(&device);
-            buffer.update_with_pos_rot_radii(&queue, offset_pos, rot, radii);
+            buffer.update_with_scale_rotation_position(&queue, scale, rotation, offset_pos);
             buffer
         })
         .collect::<Vec<_>>();
@@ -169,14 +169,12 @@ async fn main() {
 
     queue.submit(Some(encoder.finish()));
 
-    log::debug!("Removing unslected Gaussians");
-    let selected_download = dest
-        .download(&device, &queue)
-        .await
-        .expect("selected download");
-
+    log::debug!("Filtering Gaussians");
     let selected_gaussians = gs::core::Gaussians {
-        gaussians: selected_download
+        gaussians: dest
+            .download(&device, &queue)
+            .await
+            .expect("selected download")
             .iter()
             .flat_map(|group| {
                 std::iter::repeat_n(group, 32)

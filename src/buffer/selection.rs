@@ -110,15 +110,16 @@ impl SphereSelectionBuffer {
         self.0.update(queue, inv_transform);
     }
 
-    /// Update the sphere selection buffer with the position, rotation, and radii.
-    pub fn update_with_pos_rot_radii(
+    /// Update the sphere selection buffer with the scale, rotation, and position.
+    pub fn update_with_scale_rotation_position(
         &self,
         queue: &wgpu::Queue,
-        pos: Vec3,
-        rot: Quat,
-        radii: Vec3,
+        position: Vec3,
+        rotation: Quat,
+        scale: Vec3,
     ) {
-        let inv_transform = Mat4::from_scale_rotation_translation(radii, rot, pos).inverse();
+        let inv_transform =
+            Mat4::from_scale_rotation_translation(scale, rotation, position).inverse();
         self.update(queue, inv_transform);
     }
 }
