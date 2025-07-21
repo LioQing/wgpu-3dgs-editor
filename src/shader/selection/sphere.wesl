@@ -46,9 +46,12 @@ fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid
     let world_pos = model_to_world(model_transform, gaussian.pos);
     let sphere_pos = sphere.inv_transform * world_pos;
 
-    if length(sphere_pos.xyz) <= 1.0 {
-        atomicOr(&dest[index], utils::bit_flag(op));
+    let word_index = index / 32u;
+    let bit_index = index % 32u;
+    let bit_mask = 1u << bit_index;
+    if length(sphere_pos.xyz / sphere_pos.w) <= 1.0 {
+        atomicOr(&dest[word_index], bit_mask);
     } else {
-        atomicAnd(&dest[index], ~utils::bit_flag(op));
+        atomicAnd(&dest[word_index], ~bit_mask);
     }
 }

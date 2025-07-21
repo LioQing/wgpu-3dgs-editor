@@ -22,7 +22,6 @@ impl PkgModule for Mod {
             // TODO: Wait for wesl-rs support nested modules
             "ops" => Some(&selection::ops::Mod),
             "primitive_ops" => Some(&selection::primitive_ops::Mod),
-            "utils" => Some(&selection::utils::Mod),
             "sphere" => Some(&selection::sphere::Mod),
             _ => None,
         }
@@ -78,8 +77,7 @@ pub mod selection {
         }
 
         fn submodules(&self) -> &[&dyn PkgModule] {
-            static SUBMODULES: &[&dyn PkgModule] =
-                &[&ops::Mod, &primitive_ops::Mod, &utils::Mod, &sphere::Mod];
+            static SUBMODULES: &[&dyn PkgModule] = &[&ops::Mod, &primitive_ops::Mod, &sphere::Mod];
             SUBMODULES
         }
 
@@ -87,7 +85,6 @@ pub mod selection {
             match name {
                 "ops" => Some(&ops::Mod),
                 "primitive_ops" => Some(&primitive_ops::Mod),
-                "utils" => Some(&utils::Mod),
                 "sphere" => Some(&sphere::Mod),
                 _ => None,
             }
@@ -96,6 +93,5 @@ pub mod selection {
 
     selection_submodule!(ops);
     selection_submodule!(primitive_ops);
-    selection_submodule!(utils);
     selection_submodule!(sphere);
 }
