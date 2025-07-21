@@ -46,7 +46,7 @@ fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid
     let word_index = index / 32u;
     let bit_index = index % 32u;
     let bit_mask = 1u << bit_index;
-    if length(local_pos) <= 1.0 {
+    if all(local_pos >= vec3<f32>(-0.5)) && all(local_pos <= vec3<f32>(0.5)) {
         atomicOr(&dest[word_index], bit_mask);
     } else {
         atomicAnd(&dest[word_index], ~bit_mask);

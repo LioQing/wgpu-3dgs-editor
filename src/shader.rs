@@ -23,15 +23,16 @@ impl PkgModule for Mod {
             "ops" => Some(&selection::ops::Mod),
             "primitive_ops" => Some(&selection::primitive_ops::Mod),
             "sphere" => Some(&selection::sphere::Mod),
+            "box" => Some(&selection::r#box::Mod),
             _ => None,
         }
     }
 }
 
 macro_rules! submodule {
-    ($name:ident $(, $dir:literal)?) => {
+    ($name:ident $(, $dir:literal)? override $mod_name:ident) => {
         paste::paste! {
-            pub mod $name {
+            pub mod $mod_name {
                 pub struct Mod;
 
                 impl wesl::PkgModule for Mod {
@@ -54,6 +55,9 @@ macro_rules! submodule {
             }
         }
     };
+    ($name:ident $(, $dir:literal)?) => {
+        submodule!($name $(, $dir)? override $name);
+    };
 }
 
 pub mod selection {
@@ -62,6 +66,9 @@ pub mod selection {
     macro_rules! selection_submodule {
         ($name:ident) => {
             submodule!($name, "selection/");
+        };
+        ($name:ident override $mod_name:ident) => {
+            submodule!($name, "selection/" override $mod_name);
         };
     }
 
@@ -77,7 +84,8 @@ pub mod selection {
         }
 
         fn submodules(&self) -> &[&dyn PkgModule] {
-            static SUBMODULES: &[&dyn PkgModule] = &[&ops::Mod, &primitive_ops::Mod, &sphere::Mod];
+            static SUBMODULES: &[&dyn PkgModule] =
+                &[&ops::Mod, &primitive_ops::Mod, &sphere::Mod, &r#box::Mod];
             SUBMODULES
         }
 
@@ -86,6 +94,7 @@ pub mod selection {
                 "ops" => Some(&ops::Mod),
                 "primitive_ops" => Some(&primitive_ops::Mod),
                 "sphere" => Some(&sphere::Mod),
+                "box" => Some(&r#box::Mod),
                 _ => None,
             }
         }
@@ -94,4 +103,5 @@ pub mod selection {
     selection_submodule!(ops);
     selection_submodule!(primitive_ops);
     selection_submodule!(sphere);
+    selection_submodule!(box override r#box);
 }
