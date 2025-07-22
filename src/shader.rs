@@ -12,18 +12,18 @@ impl PkgModule for Mod {
     }
 
     fn submodules(&self) -> &[&dyn PkgModule] {
-        static SUBMODULES: &[&dyn PkgModule] = &[&selection::Mod];
+        static SUBMODULES: &[&dyn PkgModule] = &[&selection::Mod, &modifier::Mod];
         SUBMODULES
     }
 
     fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
         match name {
             "selection" => Some(&selection::Mod),
-            // TODO: Wait for wesl-rs support nested modules
             "ops" => Some(&selection::ops::Mod),
             "primitive_ops" => Some(&selection::primitive_ops::Mod),
             "sphere" => Some(&selection::sphere::Mod),
             "box" => Some(&selection::r#box::Mod),
+            "modifier" => Some(&modifier::Mod),
             _ => None,
         }
     }
@@ -59,6 +59,8 @@ macro_rules! submodule {
         submodule!($name $(, $dir)? override $name);
     };
 }
+
+submodule!(modifier);
 
 pub mod selection {
     use super::*;
