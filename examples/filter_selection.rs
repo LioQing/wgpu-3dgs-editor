@@ -88,8 +88,8 @@ async fn main() {
     let rotation = Quat::from_slice(&args.rotation);
     let scale = Vec3::from_slice(&args.scale);
     let shape = match args.shape {
-        Shape::Sphere => gs::ops::sphere::<GaussianPod>,
-        Shape::Box => gs::ops::r#box::<GaussianPod>,
+        Shape::Sphere => gs::selection_bundle::sphere::<GaussianPod>,
+        Shape::Box => gs::selection_bundle::r#box::<GaussianPod>,
     };
     let repeat = args.repeat;
     let offset = Vec3::from_slice(&args.offset);

@@ -457,7 +457,8 @@ impl SelectionBundle {
     }
 }
 
-pub mod ops {
+/// All provided [`SelectionExpr::Selection`] operations' compute bundles.
+pub mod selection_bundle {
     use super::*;
 
     /// The sphere selection bind group layout descriptor.
@@ -465,7 +466,7 @@ pub mod ops {
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Sphere Selection Bind Group Layout"),
             entries: &[
-                // Sphere uniform buffer
+                // Inverse transform uniform buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -511,7 +512,7 @@ pub mod ops {
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Box Selection Bind Group Layout"),
             entries: &[
-                // Box uniform buffer
+                // Inverse transform uniform buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
