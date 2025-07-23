@@ -30,7 +30,7 @@ override workgroup_size: u32;
 fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
     let index = compute_bundle::index(wid, workgroup_size, lid);
 
-    if (index >= arrayLength(&gaussians)) {
+    if (index >= arrayLength(&dest)) {
         return;
     }
 

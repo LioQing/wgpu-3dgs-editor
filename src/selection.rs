@@ -9,15 +9,6 @@ use crate::{
     shader,
 };
 
-macro_rules! package_module_path {
-    ($($components:ident)::+) => {
-        wesl::ModulePath {
-            origin: wesl::syntax::PathOrigin::Package,
-            components: vec![$(stringify!($components).to_string()),+],
-        }
-    }
-}
-
 /// A selection expression tree.
 ///
 /// This can be used to carry out operations on selection buffers.
@@ -418,7 +409,7 @@ impl SelectionBundle {
         match expr.custom_op_index_and_bind_groups() {
             None => self.primitive_bundle.dispatch(
                 encoder,
-                gaussians.len() as u32,
+                (gaussians.len() as u32).div_ceil(self.primitive_bundle.workgroup_size()),
                 [&gaussians_bind_group],
             ),
             Some((i, bind_groups)) => {
@@ -443,8 +434,8 @@ impl SelectionBundle {
             .label("Selection Primitive Operations")
             .bind_group(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
             .resolver(resolver)
-            .main_shader(package_module_path!(
-                wgpu_3dgs_editor::selection::primitive_ops
+            .main_shader(wesl::ModulePath::from_path(
+                "wgpu_3dgs_editor/selection/primitive_ops",
             ))
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
@@ -495,7 +486,9 @@ pub mod selection_bundle {
                 &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
-            .main_shader(package_module_path!(wgpu_3dgs_editor::selection::sphere))
+            .main_shader(wesl::ModulePath::from_path(
+                "wgpu_3dgs_editor/selection/sphere",
+            ))
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
                 features: G::features_map(),
@@ -541,7 +534,9 @@ pub mod selection_bundle {
                 &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
-            .main_shader(package_module_path!(wgpu_3dgs_editor::selection::box))
+            .main_shader(wesl::ModulePath::from_path(
+                "wgpu_3dgs_editor/selection/box",
+            ))
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
                 features: G::features_map(),
