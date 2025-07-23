@@ -19,12 +19,10 @@ impl PkgModule for Mod {
     fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
         match name {
             "selection" => Some(&selection::Mod),
-            "ops" => Some(&selection::ops::Mod),
-            "primitive_ops" => Some(&selection::primitive_ops::Mod),
-            "sphere" => Some(&selection::sphere::Mod),
-            "box" => Some(&selection::r#box::Mod),
             "modifier" => Some(&modifier::Mod),
-            _ => None,
+            _ => selection::Mod
+                .submodule(name)
+                .or_else(|| modifier::Mod.submodule(name)),
         }
     }
 }
@@ -59,8 +57,6 @@ macro_rules! submodule {
         submodule!($name $(, $dir)? override $name);
     };
 }
-
-submodule!(modifier);
 
 pub mod selection {
     use super::*;
@@ -106,4 +102,43 @@ pub mod selection {
     selection_submodule!(primitive_ops);
     selection_submodule!(sphere);
     selection_submodule!(box override r#box);
+}
+
+pub mod modifier {
+    use super::*;
+
+    macro_rules! modifier_submodule {
+        ($name:ident) => {
+            submodule!($name, "modifier/");
+        };
+        ($name:ident override $mod_name:ident) => {
+            submodule!($name, "modifier/" override $mod_name);
+        };
+    }
+
+    pub struct Mod;
+
+    impl PkgModule for Mod {
+        fn name(&self) -> &'static str {
+            "modifier"
+        }
+
+        fn source(&self) -> &'static str {
+            ""
+        }
+
+        fn submodules(&self) -> &[&dyn PkgModule] {
+            static SUBMODULES: &[&dyn PkgModule] = &[&utils::Mod];
+            SUBMODULES
+        }
+
+        fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
+            match name {
+                "utils" => Some(&utils::Mod),
+                _ => None,
+            }
+        }
+    }
+
+    modifier_submodule!(utils);
 }

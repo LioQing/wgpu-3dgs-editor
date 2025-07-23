@@ -1,4 +1,7 @@
-import wgpu_3dgs_core::gaussian::Gaussian;
+import wgpu_3dgs_core::{
+    gaussian::Gaussian,
+    model_transform::{ModelTransform, model_to_world, model_scale_rotation_mat},
+};
 
 fn rgb_to_hsv(c: vec3<f32>) -> vec3<f32> {
     const k = vec4<f32>(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -51,4 +54,87 @@ fn apply_exposure(rgb: vec3<f32>, exposure: f32) -> vec3<f32> {
 // Normally the range is [0, 5].
 fn apply_gamma(rgb: vec3<f32>, gamma: f32) -> vec3<f32> {
     return pow(rgb, vec3<f32>(1.0 / min(gamma, 1e-6)));
+}
+
+// A struct for all the modifier bundle color related parameters.
+struct ModifierBundleColorParams {
+    // If any value is negative, then it is used to override the RGB color,
+    // otherwise it is used to apply HSV modifications.
+    rgb_or_hsv: vec3<f32>,
+    // Alpha is multiplied with the original alpha.
+    alpha: f32,
+    // Contrast is applied to the RGB color.
+    contrast: f32,
+    // Exposure is applied to the RGB color.
+    exposure: f32,
+    // Gamma is applied to the RGB color.
+    gamma: f32,
+}
+
+// Apply the modifier bundle color related parameters.
+//
+// This is the default implementation for the ModifierBundle.
+fn apply_bundle_color_modifiers(
+    params: ModifierBundleColorParams,
+    in_color: vec4<f32>,
+) -> vec4<f32> {
+    var color = in_color;
+
+    if any(params.rgb_or_hsv < vec3<f32>(0.0)) {
+        color.rgb = params.rgb_or_hsv;
+    } else {
+        let hsv = rgb_to_hsv(color.rgb);
+        let modified_hsv = apply_hsv(hsv, params.rgb_or_hsv);
+        color.rgb = hsv_to_rgb(modified_hsv);
+    }
+
+    color.rgb = apply_contrast(color.rgb, params.contrast);
+    color.rgb = apply_exposure(color.rgb, params.exposure);
+    color.rgb = apply_gamma(color.rgb, params.gamma);
+
+    color.a *= params.alpha;
+
+    return color;
+}
+
+// Apply the modifier bundle transform related parameters.
+//
+// This is the default implementation for the ModifierBundle.
+//
+// Transform related parameters are applied using model and per Gaussian transforms.
+// The model transform is applied with ModelTransform struct,
+// and the per Gaussian transform is applied with a scale and rotation transform matrix.
+fn apply_bundle_transform_modifiers(
+    model_transform: ModelTransform,
+    scale_rotation: mat3x3<f32>,
+    in_gaussian: Gaussian,
+) -> Gaussian {
+    var gaussian = in_gaussian;
+
+    gaussian.pos = model_to_world(model_transform, gaussian.pos);
+
+    let sr = model_scale_rotation_mat(model_transform);
+    
+    let vrk = scale_rotation * sr * mat3x3<f32>(
+        cov3d[0], cov3d[1], cov3d[2],
+        cov3d[1], cov3d[3], cov3d[4],
+        cov3d[2], cov3d[4], cov3d[5],
+    ) * transpose(scale_rotation * sr);
+
+    let cov3d = array<f32>(
+        vrk[0][0], vrk[0][1], vrk[0][2],
+        vrk[1][1], vrk[1][2], vrk[2][2],
+    );
+
+    @if(cov3d_single)
+        gaussian.cov3d = cov3d;
+
+    @if(cov3d_half)
+        gaussian.cov3d = array<f32>(
+            pack2x16float(cov3d[0], cov3d[1]),
+            pack2x16float(cov3d[2], cov3d[3]),
+            pack2x16float(cov3d[4], cov3d[5]),
+        );
+
+    return gaussian;
 }

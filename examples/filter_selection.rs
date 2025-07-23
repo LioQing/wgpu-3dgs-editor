@@ -166,6 +166,8 @@ async fn main() {
     log::debug!("Creating destination buffer");
     let dest = gs::SelectionBuffer::new(&device, gaussians_buffer.len() as u32);
 
+    log::info!("Starting selection process");
+
     log::debug!("Selecting Gaussians");
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("Selection Encoder"),
@@ -207,4 +209,6 @@ async fn main() {
     selected_gaussians
         .write_ply(&mut writer)
         .expect("write modified Gaussians to output file");
+
+    log::info!("Filtered Gaussians written to {}", args.output);
 }
