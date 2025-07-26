@@ -128,17 +128,19 @@ pub mod modifier {
         }
 
         fn submodules(&self) -> &[&dyn PkgModule] {
-            static SUBMODULES: &[&dyn PkgModule] = &[&utils::Mod];
+            static SUBMODULES: &[&dyn PkgModule] = &[&utils::Mod, &basic::Mod];
             SUBMODULES
         }
 
         fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
             match name {
                 "utils" => Some(&utils::Mod),
+                "basic" => Some(&basic::Mod),
                 _ => None,
             }
         }
     }
 
     modifier_submodule!(utils);
+    modifier_submodule!(basic);
 }

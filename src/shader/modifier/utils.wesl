@@ -1,5 +1,5 @@
 import wgpu_3dgs_core::{
-    gaussian::Gaussian,
+    gaussian::{Gaussian, gaussian_unpack_cov3d},
     model_transform::{ModelTransform, model_to_world, model_scale_rotation_mat},
 };
 
@@ -56,8 +56,35 @@ fn apply_gamma(rgb: vec3<f32>, gamma: f32) -> vec3<f32> {
     return pow(rgb, vec3<f32>(1.0 / min(gamma, 1e-6)));
 }
 
-// A struct for all the modifier bundle color related parameters.
-struct ModifierBundleColorParams {
+// Apply a scale rotation matrix to a Gaussian.
+fn apply_scale_rotation(
+    scale_rotation: mat3x3<f32>,
+    cov3d: array<f32, 6>,
+) -> Gaussian {
+    let vrk = scale_rotation * mat3x3<f32>(
+        cov3d[0], cov3d[1], cov3d[2],
+        cov3d[1], cov3d[3], cov3d[4],
+        cov3d[2], cov3d[4], cov3d[5],
+    ) * transpose(scale_rotation);
+
+    let cov3d = array<f32>(
+        vrk[0][0], vrk[0][1], vrk[0][2],
+        vrk[1][1], vrk[1][2], vrk[2][2],
+    );
+
+    @if(cov3d_single)
+        return cov3d;
+
+    @if(cov3d_half)
+        return array<f32>(
+            pack2x16float(cov3d[0], cov3d[1]),
+            pack2x16float(cov3d[2], cov3d[3]),
+            pack2x16float(cov3d[4], cov3d[5]),
+        );
+}
+
+// A struct for all the basic color related modifiers.
+struct BasicColorModifiers {
     // If any value is negative, then it is used to override the RGB color,
     // otherwise it is used to apply HSV modifications.
     rgb_or_hsv: vec3<f32>,
@@ -71,40 +98,38 @@ struct ModifierBundleColorParams {
     gamma: f32,
 }
 
-// Apply the modifier bundle color related parameters.
+// Apply the basic color modifiers.
 //
 // This is the default implementation for the ModifierBundle.
-fn apply_bundle_color_modifiers(
-    params: ModifierBundleColorParams,
+fn apply_basic_color_modifiers(
+    modifiers: BasicColorModifiers,
     in_color: vec4<f32>,
 ) -> vec4<f32> {
     var color = in_color;
 
-    if any(params.rgb_or_hsv < vec3<f32>(0.0)) {
-        color.rgb = params.rgb_or_hsv;
+    if any(modifiers.rgb_or_hsv < vec3<f32>(0.0)) {
+        color.rgb = modifiers.rgb_or_hsv;
     } else {
         let hsv = rgb_to_hsv(color.rgb);
-        let modified_hsv = apply_hsv(hsv, params.rgb_or_hsv);
+        let modified_hsv = apply_hsv(hsv, modifiers.rgb_or_hsv);
         color.rgb = hsv_to_rgb(modified_hsv);
     }
 
-    color.rgb = apply_contrast(color.rgb, params.contrast);
-    color.rgb = apply_exposure(color.rgb, params.exposure);
-    color.rgb = apply_gamma(color.rgb, params.gamma);
+    color.rgb = apply_contrast(color.rgb, modifiers.contrast);
+    color.rgb = apply_exposure(color.rgb, modifiers.exposure);
+    color.rgb = apply_gamma(color.rgb, modifiers.gamma);
 
-    color.a *= params.alpha;
+    color.a *= modifiers.alpha;
 
     return color;
 }
 
-// Apply the modifier bundle transform related parameters.
-//
-// This is the default implementation for the ModifierBundle.
+// Apply the basic transform modifiers.
 //
 // Transform related parameters are applied using model and per Gaussian transforms.
 // The model transform is applied with ModelTransform struct,
 // and the per Gaussian transform is applied with a scale and rotation transform matrix.
-fn apply_bundle_transform_modifiers(
+fn apply_basic_transform_modifiers(
     model_transform: ModelTransform,
     scale_rotation: mat3x3<f32>,
     in_gaussian: Gaussian,
@@ -114,27 +139,9 @@ fn apply_bundle_transform_modifiers(
     gaussian.pos = model_to_world(model_transform, gaussian.pos);
 
     let sr = model_scale_rotation_mat(model_transform);
-    
-    let vrk = scale_rotation * sr * mat3x3<f32>(
-        cov3d[0], cov3d[1], cov3d[2],
-        cov3d[1], cov3d[3], cov3d[4],
-        cov3d[2], cov3d[4], cov3d[5],
-    ) * transpose(scale_rotation * sr);
+    let cov3d = gaussian_unpack_cov3d(gaussian);
 
-    let cov3d = array<f32>(
-        vrk[0][0], vrk[0][1], vrk[0][2],
-        vrk[1][1], vrk[1][2], vrk[2][2],
-    );
-
-    @if(cov3d_single)
-        gaussian.cov3d = cov3d;
-
-    @if(cov3d_half)
-        gaussian.cov3d = array<f32>(
-            pack2x16float(cov3d[0], cov3d[1]),
-            pack2x16float(cov3d[2], cov3d[3]),
-            pack2x16float(cov3d[4], cov3d[5]),
-        );
+    gaussian.cov3d = apply_scale_rotation(scale_rotation * sr, cov3d);
 
     return gaussian;
 }

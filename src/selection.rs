@@ -4,7 +4,7 @@ use crate::{
     SelectionBuffer, SelectionOpBuffer,
     core::{
         self, BufferWrapper, ComputeBundle, ComputeBundleBuilder, GaussianPod,
-        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
+        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer, buffer_wrapper_arr,
     },
     shader,
 };
@@ -239,9 +239,9 @@ impl SelectionBundle {
     /// The Gaussians bind group layout descriptors.
     pub const GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
-            label: Some("Mask Evaluator Bind Group Layout"),
+            label: Some("Selection Gaussians Bind Group Layout"),
             entries: &[
-                // Mask operation buffer
+                // Selection operation buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -252,7 +252,7 @@ impl SelectionBundle {
                     },
                     count: None,
                 },
-                // Source mask buffer
+                // Source selection buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -263,7 +263,7 @@ impl SelectionBundle {
                     },
                     count: None,
                 },
-                // Destination mask buffer
+                // Destination selection buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -392,18 +392,7 @@ impl SelectionBundle {
 
         let gaussians_bind_group = self
             .primitive_bundle
-            .create_bind_group(
-                device,
-                0,
-                [
-                    &op as &dyn BufferWrapper,
-                    &source as &dyn BufferWrapper,
-                    d as &dyn BufferWrapper,
-                    m as &dyn BufferWrapper,
-                    g as &dyn BufferWrapper,
-                    gs as &dyn BufferWrapper,
-                ],
-            )
+            .create_bind_group(device, 0, buffer_wrapper_arr![&op, &source, d, m, g, gs])
             .expect("gaussians bind group");
 
         match expr.custom_op_index_and_bind_groups() {
@@ -446,11 +435,6 @@ impl SelectionBundle {
             .map_err(|e| log::error!("{e}"))
             .expect("primitive bundle")
     }
-}
-
-/// All provided [`SelectionExpr::Selection`] operations' compute bundles.
-pub mod selection_bundle {
-    use super::*;
 
     /// The sphere selection bind group layout descriptor.
     pub const SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
@@ -474,8 +458,8 @@ pub mod selection_bundle {
     /// Create a sphere selection operation.
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    /// - Bind group 1 is [`SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn sphere<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+    /// - Bind group 1 is [`SelectionBundle::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    pub fn create_sphere_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
         resolver.add_package(&core::shader::Mod);
         resolver.add_package(&shader::Mod);
@@ -483,8 +467,8 @@ pub mod selection_bundle {
         ComputeBundleBuilder::new()
             .label("Sphere Selection")
             .bind_groups([
-                &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-                &SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                &Self::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
             .main_shader(wesl::ModulePath::from_path(
                 "wgpu_3dgs_editor/selection/sphere",
@@ -522,8 +506,8 @@ pub mod selection_bundle {
     /// Create a box selection operation.
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    /// - Bind group 1 is [`BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn r#box<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+    /// - Bind group 1 is [`SelectionBundle::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    pub fn create_box_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
         resolver.add_package(&core::shader::Mod);
         resolver.add_package(&shader::Mod);
@@ -531,8 +515,8 @@ pub mod selection_bundle {
         ComputeBundleBuilder::new()
             .label("Box Selection")
             .bind_groups([
-                &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-                &BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                &Self::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
             .main_shader(wesl::ModulePath::from_path(
                 "wgpu_3dgs_editor/selection/box",
