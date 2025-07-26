@@ -22,14 +22,14 @@ var<uniform> model_transform: ModelTransform;
 @group(0) @binding(3)
 var<uniform> gaussian_transform: GaussianTransform;
 
-@group(1) @binding(0)
-var<uniform> color_modifiers: BasicColorModifiers;
+const transform_flags_model: u32 = 1;
+const transform_flags_gaussian: u32 = 2;
 
-const transform_flags_apply_model: u32 = 1;
-const transform_flags_apply_gaussian: u32 = 2;
+@group(1) @binding(0)
+var<uniform> transform_flags: u32;
 
 @group(1) @binding(1)
-var<uniform> transform_flags: u32;
+var<uniform> color_modifiers: BasicColorModifiers;
 
 @group(1) @binding(2)
 var<uniform> scale_rotation: mat3x3<f32>;
@@ -59,12 +59,12 @@ fn main(
         vec4<f32>(0.0, 0.0, 0.0, 1.0),
         vec3<f32>(1.0, 1.0, 1.0),
     );
-    if (transform_flags & transform_flags_apply_model) != 0 {
+    if (transform_flags & transform_flags_model) != 0 {
         applied_model_transform = model_transform;
     }
 
     var applied_scale_rotation = scale_rotation;
-    if (transform_flags & transform_flags_apply_gaussian) != 0 {
+    if (transform_flags & transform_flags_gaussian) != 0 {
         applied_scale_rotation *= gaussian_transform.size;
     }
 

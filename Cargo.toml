@@ -30,6 +30,7 @@ bytemuck = { version = "1.23", features = [
     "extern_crate_alloc",
     "min_const_generics",
 ] }
+bitflags = { version = "2.9", features = ["bytemuck"] }
 glam = { version = "0.30", features = ["bytemuck"] }
 half = { version = "2.4", features = ["bytemuck"] }
 log = "0.4"
