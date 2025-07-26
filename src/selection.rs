@@ -398,7 +398,7 @@ impl SelectionBundle {
         match expr.custom_op_index_and_bind_groups() {
             None => self.primitive_bundle.dispatch(
                 encoder,
-                (gaussians.len() as u32).div_ceil(self.primitive_bundle.workgroup_size()),
+                (gaussians.len() as u32).div_ceil(32),
                 [&gaussians_bind_group],
             ),
             Some((i, bind_groups)) => {

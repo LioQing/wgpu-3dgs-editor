@@ -83,7 +83,7 @@ impl BasicModifiers {
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Basic Modifiers Bind Group Layout"),
             entries: &[
-                // Basic color modifiers uniform buffer
+                // Transform flags uniform buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -94,7 +94,7 @@ impl BasicModifiers {
                     },
                     count: None,
                 },
-                // Transform flags uniform buffer
+                // Basic color modifiers uniform buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -126,8 +126,8 @@ impl BasicModifiers {
         dest: &GaussiansBuffer<G>,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
-        basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         transform_flags_buffer: &TransformFlagsBuffer,
+        basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         scale_rotation_buffer: &ScaleRotationBuffer,
     ) -> Self {
         Self::create_bundle_builder::<G>()
@@ -136,8 +136,8 @@ impl BasicModifiers {
                 [
                     buffer_wrapper_arr![source, dest, model_transform, gaussian_transform].to_vec(),
                     buffer_wrapper_arr![
-                        basic_color_modifiers_buffer,
                         transform_flags_buffer,
+                        basic_color_modifiers_buffer,
                         scale_rotation_buffer,
                     ]
                     .to_vec(),
@@ -145,6 +145,16 @@ impl BasicModifiers {
             )
             .map(Self)
             .expect("basic modifiers bundle")
+    }
+
+    /// Apply the basic modifiers to the Gaussians in the source buffer and write the results
+    /// to the destination buffer.
+    pub fn apply<'a, G: GaussianPod>(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussian_count: u32,
+    ) {
+        self.bundle().dispatch(encoder, gaussian_count);
     }
 
     fn create_bundle_builder<'a, G: GaussianPod>()
@@ -173,10 +183,26 @@ impl BasicModifiers {
 
 impl BasicModifiers<()> {
     /// Creates a new [`BasicModifiers`] bundle without a bind group.
-    pub fn new_no_bind_group<G: GaussianPod>(device: &wgpu::Device) -> Self {
+    pub fn new_without_bind_group<G: GaussianPod>(device: &wgpu::Device) -> Self {
         BasicModifiers::create_bundle_builder::<G>()
             .build_without_bind_groups(&device)
             .map(Self)
             .expect("basic modifiers bundle")
+    }
+
+    /// Apply the basic modifiers to the Gaussians in the source buffer and write the results
+    /// to the destination buffer.
+    ///
+    /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    /// - `bind_group` is the bind group created from [`BasicModifiers::BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    pub fn apply<'a, G: GaussianPod>(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians_bind_group: &wgpu::BindGroup,
+        bind_group: &wgpu::BindGroup,
+        gaussian_count: u32,
+    ) {
+        self.bundle()
+            .dispatch(encoder, gaussian_count, [gaussians_bind_group, bind_group]);
     }
 }
