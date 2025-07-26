@@ -5,31 +5,25 @@ import wgpu_3dgs_core::{
     model_transform::ModelTransform,
 };
 import wgpu_3dgs_editor::utils::{
-    ModifierBundleParams,
-    apply_bundle_color_modifiers,
-    apply_bundle_transform_modifiers,
+    BasicColorModifiers,
+    apply_basic_color_modifiers,
+    apply_basic_transform_modifiers,
 };
 
 @group(0) @binding(0)
-var<uniform> op: u32;
+var<storage, read> source: array<Gaussian>;
 
 @group(0) @binding(1)
-var<storage, read> source: array<u32>;
+var<storage, read_write> dest: array<Gaussian>;
 
 @group(0) @binding(2)
-var<storage, read_write> dest: array<atomic<u32>>;
-
-@group(0) @binding(3)
 var<uniform> model_transform: ModelTransform;
 
-@group(0) @binding(4)
+@group(0) @binding(3)
 var<uniform> gaussian_transform: GaussianTransform;
 
-@group(0) @binding(5)
-var<storage, read> gaussians: array<Gaussian>;
-
 @group(1) @binding(0)
-var<uniform> color_params: ModifierBundleColorParams;
+var<uniform> color_modifiers: BasicColorModifiers;
 
 const transform_flags_apply_model: u32 = 1;
 const transform_flags_apply_gaussian: u32 = 2;
@@ -49,14 +43,14 @@ fn main(
 ) {
     let index = compute_bundle::index(wid, workgroup_size, lid);
 
-    if index >= arrayLength(&gaussians) {
+    if index >= arrayLength(&source) {
         return;
     }
 
-    var gaussian = gaussians[index];
+    var gaussian = source[index];
 
-    gaussian.color = pack4x8unorm(apply_bundle_color_modifiers(
-        color_params,
+    gaussian.color = pack4x8unorm(apply_basic_color_modifiers(
+        color_modifiers,
         gaussian_unpack_color(gaussian),
     ));
 
@@ -74,11 +68,11 @@ fn main(
         applied_scale_rotation *= gaussian_transform.size;
     }
 
-    gaussian = apply_bundle_transform_modifiers(
+    gaussian = apply_basic_transform_modifiers(
         applied_model_transform,
         applied_scale_rotation,
         gaussian,
     );
 
-    gaussians[index] = gaussian;
+    dest[index] = gaussian;
 }

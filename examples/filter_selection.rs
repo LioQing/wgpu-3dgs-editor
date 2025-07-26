@@ -88,8 +88,8 @@ async fn main() {
     let rotation = Quat::from_slice(&args.rotation);
     let scale = Vec3::from_slice(&args.scale);
     let shape = match args.shape {
-        Shape::Sphere => gs::selection_bundle::sphere::<GaussianPod>,
-        Shape::Box => gs::selection_bundle::r#box::<GaussianPod>,
+        Shape::Sphere => gs::SelectionBundle::create_sphere_bundle::<GaussianPod>,
+        Shape::Box => gs::SelectionBundle::create_box_bundle::<GaussianPod>,
     };
     let repeat = args.repeat;
     let offset = Vec3::from_slice(&args.offset);
@@ -151,17 +151,27 @@ async fn main() {
         .iter()
         .map(|buffer| {
             selection_bundle.bundles[0]
-                .create_bind_group(&device, 1, [buffer as &dyn gs::core::BufferWrapper])
+                .create_bind_group(
+                    &device,
+                    // index 0 is the Gaussians buffer, so we use 1,
+                    // see docs of create_sphere_bundle or create_box_bundle
+                    1,
+                    gs::core::buffer_wrapper_arr![buffer],
+                )
                 .expect("bind group")
         })
         .collect::<Vec<_>>();
 
     log::debug!("Creating selection expression");
-    let selection_expr = shape_selection_bind_groups
-        .into_iter()
-        .fold(gs::SelectionExpr::Identity, |acc, bind_group| {
-            acc.union(gs::SelectionExpr::selection(0, vec![bind_group]))
-        });
+    let selection_expr = shape_selection_bind_groups.into_iter().fold(
+        gs::SelectionExpr::Identity,
+        |acc, bind_group| {
+            acc.union(gs::SelectionExpr::selection(
+                0, // the 0 here is the bundle index in the selection bundle
+                vec![bind_group],
+            ))
+        },
+    );
 
     log::debug!("Creating destination buffer");
     let dest = gs::SelectionBuffer::new(&device, gaussians_buffer.len() as u32);
