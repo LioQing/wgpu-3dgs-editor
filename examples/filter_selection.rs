@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_core::{DownloadableBufferWrapper, GaussianPodWithShSingleCov3dSingleConfigs};
+use wgpu_3dgs_core::DownloadableBufferWrapper;
 use wgpu_3dgs_editor as gs;
 
 /// The command line arguments.
@@ -76,7 +76,7 @@ enum Shape {
     Box,
 }
 
-type GaussianPod = GaussianPodWithShSingleCov3dSingleConfigs;
+type GaussianPod = gs::core::GaussianPodWithShSingleCov3dSingleConfigs;
 
 #[tokio::main]
 async fn main() {

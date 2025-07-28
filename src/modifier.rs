@@ -7,26 +7,15 @@ use crate::{
     shader,
 };
 
-/// The bind group layout descriptor for the source and destination Gaussians buffers, with the
+/// The bind group layout descriptor for the Gaussians buffer, with the
 /// model transform and Gaussian transform.
 pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
     wgpu::BindGroupLayoutDescriptor {
         label: Some("Modifier Gaussians Bind Group Layout"),
         entries: &[
-            // Source Gaussian storage buffer
+            // Gaussians storage buffer
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            // Destination Gaussian storage buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -37,7 +26,7 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
             },
             // Model transform uniform buffer
             wgpu::BindGroupLayoutEntry {
-                binding: 2,
+                binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
@@ -48,7 +37,7 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
             },
             // Gaussian transform uniform buffer
             wgpu::BindGroupLayoutEntry {
-                binding: 3,
+                binding: 2,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
@@ -66,16 +55,16 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
 /// [`ScaleRotationBuffer`], and [`TransformFlagsBuffer`] (which provides flags for applying
 /// [`core::ModelTransformBuffer`] and [`core::GaussianTransformBuffer`]).
 #[derive(Debug)]
-pub struct BasicModifiers<B = wgpu::BindGroup>(ComputeBundle<B>);
+pub struct BasicModifiersBundle<B = wgpu::BindGroup>(ComputeBundle<B>);
 
-impl<B> BasicModifiers<B> {
+impl<B> BasicModifiersBundle<B> {
     /// Gets the inner [`ComputeBundle`].
     pub fn bundle(&self) -> &ComputeBundle<B> {
         &self.0
     }
 }
 
-impl BasicModifiers {
+impl BasicModifiersBundle {
     /// The bind group layout descriptor for the basic modifiers.
     ///
     /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
@@ -119,13 +108,12 @@ impl BasicModifiers {
             ],
         };
 
-    /// Creates a new [`BasicModifiers`] bundle.
+    /// Creates a new [`BasicModifiersBundle`] bundle.
     pub fn new<G: GaussianPod>(
         device: &wgpu::Device,
-        source: &GaussiansBuffer<G>,
-        dest: &GaussiansBuffer<G>,
-        model_transform: &ModelTransformBuffer,
-        gaussian_transform: &GaussianTransformBuffer,
+        gaussians_buffer: &GaussiansBuffer<G>,
+        model_transform_buffer: &ModelTransformBuffer,
+        gaussian_transform_buffer: &GaussianTransformBuffer,
         transform_flags_buffer: &TransformFlagsBuffer,
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         scale_rotation_buffer: &ScaleRotationBuffer,
@@ -134,7 +122,12 @@ impl BasicModifiers {
             .build(
                 &device,
                 [
-                    buffer_wrapper_arr![source, dest, model_transform, gaussian_transform].to_vec(),
+                    buffer_wrapper_arr![
+                        gaussians_buffer,
+                        model_transform_buffer,
+                        gaussian_transform_buffer,
+                    ]
+                    .to_vec(),
                     buffer_wrapper_arr![
                         transform_flags_buffer,
                         basic_color_modifiers_buffer,
@@ -147,8 +140,7 @@ impl BasicModifiers {
             .expect("basic modifiers bundle")
     }
 
-    /// Apply the basic modifiers to the Gaussians in the source buffer and write the results
-    /// to the destination buffer.
+    /// Apply the basic modifiers to the Gaussians.
     pub fn apply<'a, G: GaussianPod>(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -181,20 +173,19 @@ impl BasicModifiers {
     }
 }
 
-impl BasicModifiers<()> {
-    /// Creates a new [`BasicModifiers`] bundle without a bind group.
+impl BasicModifiersBundle<()> {
+    /// Creates a new [`BasicModifiersBundle`] bundle without a bind group.
     pub fn new_without_bind_group<G: GaussianPod>(device: &wgpu::Device) -> Self {
-        BasicModifiers::create_bundle_builder::<G>()
+        BasicModifiersBundle::create_bundle_builder::<G>()
             .build_without_bind_groups(&device)
             .map(Self)
             .expect("basic modifiers bundle")
     }
 
-    /// Apply the basic modifiers to the Gaussians in the source buffer and write the results
-    /// to the destination buffer.
+    /// Apply the basic modifiers to the Gaussians.
     ///
     /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    /// - `bind_group` is the bind group created from [`BasicModifiers::BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    /// - `bind_group` is the bind group created from [`BasicModifiersBundle::BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub fn apply<'a, G: GaussianPod>(
         &self,
         encoder: &mut wgpu::CommandEncoder,

@@ -11,15 +11,12 @@ import wgpu_3dgs_editor::utils::{
 };
 
 @group(0) @binding(0)
-var<storage, read> source: array<Gaussian>;
+var<storage, read_write> gaussians: array<Gaussian>;
 
 @group(0) @binding(1)
-var<storage, read_write> dest: array<Gaussian>;
-
-@group(0) @binding(2)
 var<uniform> model_transform: ModelTransform;
 
-@group(0) @binding(3)
+@group(0) @binding(2)
 var<uniform> gaussian_transform: GaussianTransform;
 
 const transform_flags_model: u32 = 1;
@@ -43,11 +40,11 @@ fn main(
 ) {
     let index = compute_bundle::index(wid, workgroup_size, lid);
 
-    if index >= arrayLength(&source) {
+    if index >= arrayLength(&gaussians) {
         return;
     }
 
-    var gaussian = source[index];
+    var gaussian = gaussians[index];
 
     gaussian.color = pack4x8unorm(apply_basic_color_modifiers(
         color_modifiers,
@@ -74,5 +71,5 @@ fn main(
         gaussian,
     );
 
-    dest[index] = gaussian;
+    gaussians[index] = gaussian;
 }

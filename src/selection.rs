@@ -196,7 +196,7 @@ impl SelectionExpr {
     }
 }
 
-/// A specialized [`ComputeBundle`] for selection operations.
+/// A collection of specialized [`ComputeBundle`] for selection operations.
 ///
 /// All [`ComputeBundle`]s supplied to this bundle as a [`SelectionExpr::Unary`] or
 /// [`SelectionExpr::Binary`] must have the same bind group 0 as the
@@ -311,6 +311,10 @@ impl SelectionBundle {
         };
 
     /// Create a new selection bundle.
+    ///
+    /// `bundles` are used for [`SelectionExpr::Unary`] or [`SelectionExpr::Binary`] and
+    /// must have the same bind group 0 as the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`]
+    /// (see [`SelectionBundle`] docs for more details).
     pub fn new<'a, G: GaussianPod>(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
         let primitive_bundle = Self::create_primitive_bundle::<G>(device);
 
