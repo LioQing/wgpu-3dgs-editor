@@ -3,7 +3,7 @@ use wgpu::util::DeviceExt;
 
 use crate::core::BufferWrapper;
 
-/// The basic color modifiers buffer for the [`BasicModifiers`](crate::BasicModifiers).
+/// The basic color modifiers buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
 #[derive(Debug)]
 pub struct BasicColorModifiersBuffer(wgpu::Buffer);
 
@@ -128,7 +128,7 @@ impl Default for BasicColorModifiersPod {
     }
 }
 
-/// The transform flags buffer for the [`BasicModifiers`](crate::BasicModifiers).
+/// The transform flags buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
 #[derive(Debug)]
 pub struct TransformFlagsBuffer(wgpu::Buffer);
 
@@ -169,7 +169,7 @@ bitflags::bitflags! {
     }
 }
 
-/// The scale rotation buffer for the [`BasicModifiers`](crate::BasicModifiers).
+/// The scale rotation buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
 #[derive(Debug)]
 pub struct ScaleRotationBuffer(wgpu::Buffer);
 
