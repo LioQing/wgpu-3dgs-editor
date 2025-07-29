@@ -4,7 +4,7 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
 };
-import super::ops;
+import super::consts;
 
 @group(0) @binding(0)
 var<uniform> op: u32;
@@ -34,15 +34,15 @@ fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid
         return;
     }
 
-    if op == ops::op_union {
+    if op == consts::op_union {
         atomicOr(&dest[index], source[index]);
-    } else if op == ops::op_intersection {
+    } else if op == consts::op_intersection {
         atomicAnd(&dest[index], source[index]);
-    } else if op == ops::op_symmetric_difference {
+    } else if op == consts::op_symmetric_difference {
         atomicXor(&dest[index], source[index]);
-    } else if op == ops::op_difference {
+    } else if op == consts::op_difference {
         atomicAnd(&dest[index], ~source[index]);
-    } else if op == ops::op_complement {
+    } else if op == consts::op_complement {
         atomicStore(&dest[index], ~atomicLoad(&dest[index]));
     }
 }

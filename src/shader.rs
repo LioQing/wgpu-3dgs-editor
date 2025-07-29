@@ -83,13 +83,13 @@ pub mod selection {
 
         fn submodules(&self) -> &[&dyn PkgModule] {
             static SUBMODULES: &[&dyn PkgModule] =
-                &[&ops::Mod, &primitive_ops::Mod, &sphere::Mod, &r#box::Mod];
+                &[&consts::Mod, &primitive_ops::Mod, &sphere::Mod, &r#box::Mod];
             SUBMODULES
         }
 
         fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
             match name {
-                "ops" => Some(&ops::Mod),
+                "consts" => Some(&consts::Mod),
                 "primitive_ops" => Some(&primitive_ops::Mod),
                 "sphere" => Some(&sphere::Mod),
                 "box" => Some(&r#box::Mod),
@@ -98,7 +98,7 @@ pub mod selection {
         }
     }
 
-    selection_submodule!(ops);
+    selection_submodule!(consts);
     selection_submodule!(primitive_ops);
     selection_submodule!(sphere);
     selection_submodule!(box override r#box);
@@ -134,6 +134,7 @@ pub mod modifier {
 
         fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
             match name {
+                "consts" => Some(&consts::Mod),
                 "utils" => Some(&utils::Mod),
                 "basic" => Some(&basic::Mod),
                 _ => None,
@@ -141,6 +142,7 @@ pub mod modifier {
         }
     }
 
+    modifier_submodule!(consts);
     modifier_submodule!(utils);
     modifier_submodule!(basic);
 }
