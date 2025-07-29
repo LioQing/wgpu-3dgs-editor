@@ -4,7 +4,6 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::{model_to_world, ModelTransform},
 };
-import super::utils;
 
 @group(0) @binding(0)
 var<uniform> op: u32;

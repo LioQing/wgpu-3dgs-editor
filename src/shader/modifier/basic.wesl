@@ -31,6 +31,10 @@ var<uniform> color_modifiers: BasicColorModifiers;
 @group(1) @binding(2)
 var<uniform> scale_rotation: mat3x3<f32>;
 
+@if(selection_buffer)
+@group(1) @binding(3)
+var<storage, read> selection: array<u32>;
+
 override workgroup_size: u32;
 
 @compute @workgroup_size(workgroup_size, 1, 1)
@@ -42,6 +46,15 @@ fn main(
 
     if index >= arrayLength(&gaussians) {
         return;
+    }
+    
+    @if(selection_buffer) {
+        let word_index = index / 32u;
+        let bit_index = index % 32u;
+        let bit_mask = 1u << bit_index;
+        if selection[word_index] & bit_mask == 0u {
+            return;
+        }
     }
 
     var gaussian = gaussians[index];
