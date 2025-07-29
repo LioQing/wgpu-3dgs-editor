@@ -4,12 +4,14 @@ mod buffer;
 mod error;
 mod modifier;
 mod selection;
+mod selection_modifier;
 pub mod shader;
 
 pub use buffer::*;
 pub use error::*;
 pub use modifier::*;
 pub use selection::*;
+pub use selection_modifier::*;
 
 pub use wgpu_3dgs_core as core;
 

@@ -230,7 +230,7 @@ impl SelectionExpr {
 #[derive(Debug)]
 pub struct SelectionBundle {
     /// The compute bundle for primitive selection operations.
-    pub primitive_bundle: ComputeBundle<()>,
+    primitive_bundle: ComputeBundle<()>,
     /// The compute bundles for selection operations.
     pub bundles: Vec<ComputeBundle<()>>,
 }
@@ -329,7 +329,7 @@ impl SelectionBundle {
         &self.primitive_bundle.bind_group_layouts()[0]
     }
 
-    /// Evaluate the selection expression.
+    /// Evaluate and apply the selection expression.
     pub fn evaluate<G: GaussianPod>(
         &self,
         device: &wgpu::Device,
@@ -419,14 +419,15 @@ impl SelectionBundle {
 
     /// Create the primitive selection operation [`ComputeBundle`].
     pub fn create_primitive_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
-        let mut resolver = wesl::PkgResolver::new();
-        resolver.add_package(&core::shader::Mod);
-        resolver.add_package(&shader::Mod);
-
         ComputeBundleBuilder::new()
             .label("Selection Primitive Operations")
             .bind_group(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
-            .resolver(resolver)
+            .resolver({
+                let mut resolver = wesl::PkgResolver::new();
+                resolver.add_package(&core::shader::Mod);
+                resolver.add_package(&shader::Mod);
+                resolver
+            })
             .main_shader(wesl::ModulePath::from_path(
                 "wgpu_3dgs_editor/selection/primitive_ops",
             ))
