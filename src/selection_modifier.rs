@@ -1,14 +1,13 @@
 use crate::{
-    BasicColorModifiersBuffer, BasicModifiersBundle, ScaleRotationBuffer, SelectionBuffer,
-    SelectionBundle, SelectionExpr, TransformFlagsBuffer,
+    BasicColorModifiersBuffer, BasicModifiersBundle, Modifier, ScaleRotationBuffer,
+    SelectionBuffer, SelectionBundle, SelectionExpr, TransformFlagsBuffer,
     core::{
         ComputeBundle, GaussianPod, GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
     },
 };
-
-/// A struct to handle selection and modification together.
+/// A struct to handle selection and [`BasicModifiersBundle`] together.
 #[derive(Debug)]
-pub struct SelectionModifier {
+pub struct BasicSelectionModifier {
     pub selection_expr: SelectionExpr,
     pub selection_buffer: SelectionBuffer,
     pub transform_flags_buffer: TransformFlagsBuffer,
@@ -19,7 +18,7 @@ pub struct SelectionModifier {
     pub modifiers: BasicModifiersBundle,
 }
 
-impl SelectionModifier {
+impl BasicSelectionModifier {
     /// Create a new [`SelectionModifier`].
     ///
     /// `selection_bundles` are used for [`SelectionExpr::Unary`] or [`SelectionExpr::Binary`] and
@@ -71,9 +70,10 @@ impl SelectionModifier {
             modifiers,
         }
     }
+}
 
-    /// Apply the selection modifiers to the Gaussians.
-    pub fn apply<'a, G: GaussianPod>(
+impl<G: GaussianPod> Modifier<G> for BasicSelectionModifier {
+    fn apply(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
@@ -91,6 +91,7 @@ impl SelectionModifier {
             gaussians,
         );
 
-        self.modifiers.apply(encoder, gaussians.len() as u32);
+        self.modifiers
+            .apply_with_count(encoder, gaussians.len() as u32);
     }
 }

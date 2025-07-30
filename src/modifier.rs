@@ -7,6 +7,48 @@ use crate::{
     shader,
 };
 
+/// A trait to apply modifier to Gaussians.
+pub trait Modifier<G: GaussianPod> {
+    /// Apply the modifier to the Gaussians.
+    fn apply(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+    );
+}
+
+impl<
+    G: GaussianPod,
+    F: Fn(
+        &wgpu::Device,
+        &mut wgpu::CommandEncoder,
+        &GaussiansBuffer<G>,
+        &ModelTransformBuffer,
+        &GaussianTransformBuffer,
+    ),
+> Modifier<G> for F
+{
+    fn apply(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+    ) {
+        self(
+            device,
+            encoder,
+            gaussians,
+            model_transform,
+            gaussian_transform,
+        );
+    }
+}
+
 /// The bind group layout descriptor for the Gaussians buffer, with the
 /// model transform and Gaussian transform.
 pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
@@ -213,7 +255,7 @@ impl BasicModifiersBundle {
     }
 
     /// Apply the basic modifiers to the Gaussians.
-    pub fn apply<'a>(&self, encoder: &mut wgpu::CommandEncoder, gaussian_count: u32) {
+    pub fn apply_with_count(&self, encoder: &mut wgpu::CommandEncoder, gaussian_count: u32) {
         self.bundle().dispatch(encoder, gaussian_count);
     }
 
@@ -253,6 +295,19 @@ impl BasicModifiersBundle {
     }
 }
 
+impl<G: GaussianPod> Modifier<G> for BasicModifiersBundle {
+    fn apply(
+        &self,
+        _device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        _model_transform: &ModelTransformBuffer,
+        _gaussian_transform: &GaussianTransformBuffer,
+    ) {
+        self.apply_with_count(encoder, gaussians.len() as u32);
+    }
+}
+
 impl BasicModifiersBundle<()> {
     /// Creates a new [`BasicModifiersBundle`] bundle without a bind group.
     pub fn new_without_bind_group<G: GaussianPod>(device: &wgpu::Device) -> Self {
@@ -280,7 +335,7 @@ impl BasicModifiersBundle<()> {
     ///
     /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - `bind_group` is the bind group created from [`BasicModifiersBundle::BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn apply<'a>(
+    pub fn apply_with_count<'a>(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         gaussians_bind_group: &wgpu::BindGroup,
