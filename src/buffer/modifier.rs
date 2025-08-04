@@ -171,14 +171,14 @@ bitflags::bitflags! {
 
 /// The scale rotation buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
 #[derive(Debug)]
-pub struct ScaleRotationBuffer(wgpu::Buffer);
+pub struct RotScaleBuffer(wgpu::Buffer);
 
-impl ScaleRotationBuffer {
+impl RotScaleBuffer {
     /// Create a new scale and rotation buffer.
     pub fn new(device: &wgpu::Device) -> Self {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Scale Rotation Buffer"),
-            contents: bytemuck::bytes_of(&Mat3::IDENTITY),
+            label: Some("Scale Rot Buffer"),
+            contents: bytemuck::bytes_of(&RotScalePod::default()),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -186,25 +186,48 @@ impl ScaleRotationBuffer {
     }
 
     /// Update the scale and rotation buffer.
-    pub fn update(&self, queue: &wgpu::Queue, scale_rotation: &Mat3) {
-        queue.write_buffer(&self.0, 0, bytemuck::bytes_of(scale_rotation));
+    pub fn update(&self, queue: &wgpu::Queue, rot: Quat, scale: Vec3) {
+        self.update_with_pod(queue, &RotScalePod::new(rot, scale));
     }
 
-    /// Update the scale and rotation buffer with scale and rotation.
-    pub fn update_with_scale_rotation(&self, queue: &wgpu::Queue, scale: Vec3, rotation: Quat) {
-        self.update(
-            queue,
-            &Mat3::from_mat4(Mat4::from_scale_rotation_translation(
-                scale,
-                rotation,
-                Vec3::ZERO,
-            )),
-        );
+    /// Update the scale and rotation buffer with [`RotScalePod`].
+    pub fn update_with_pod(&self, queue: &wgpu::Queue, pod: &RotScalePod) {
+        queue.write_buffer(&self.0, 0, bytemuck::bytes_of(pod));
     }
 }
 
-impl BufferWrapper for ScaleRotationBuffer {
+impl BufferWrapper for RotScaleBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
+    }
+}
+
+/// The POD representation of the scale and rotation buffer.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RotScalePod {
+    pub rot: Quat,
+    pub scale: Vec3,
+    _padding: u32,
+}
+
+impl RotScalePod {
+    /// Create a new scale and rotation pod.
+    pub fn new(rot: Quat, scale: Vec3) -> Self {
+        Self {
+            rot,
+            scale,
+            _padding: 0,
+        }
+    }
+}
+
+impl Default for RotScalePod {
+    fn default() -> Self {
+        Self {
+            rot: Quat::IDENTITY,
+            scale: Vec3::ONE,
+            _padding: 0,
+        }
     }
 }

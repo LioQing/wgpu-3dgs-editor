@@ -22,21 +22,17 @@ use wgpu_3dgs_core::{
 /// An editor for Gaussians.
 ///
 /// This enables the application of a sequence of [`Modifier`]s to the Gaussians.
+///
+/// Note that some [`GaussianPod`] configurations may not be able to be downloaded after modification.
 pub struct Editor<G: GaussianPod> {
     pub model_transform_buffer: ModelTransformBuffer,
     pub gaussian_transform_buffer: GaussianTransformBuffer,
     pub gaussians_buffer: GaussiansBuffer<G>,
-
-    pub modifiers: Vec<Box<dyn Modifier<G>>>,
 }
 
 impl<G: GaussianPod> Editor<G> {
     /// Create a new basic editor.
-    pub fn new(
-        device: &wgpu::Device,
-        gaussians: &Gaussians,
-        modifiers: impl IntoIterator<Item = impl Into<Box<dyn Modifier<G>>>>,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, gaussians: &Gaussians) -> Self {
         log::debug!("Creating model transform buffer");
         let model_transform_buffer = ModelTransformBuffer::new(device);
 
@@ -44,7 +40,11 @@ impl<G: GaussianPod> Editor<G> {
         let gaussian_transform_buffer = GaussianTransformBuffer::new(device);
 
         log::debug!("Creating gaussians buffer");
-        let gaussians_buffer = GaussiansBuffer::new(device, &gaussians.gaussians);
+        let gaussians_buffer = GaussiansBuffer::new_with_usage(
+            device,
+            &gaussians.gaussians,
+            GaussiansBuffer::<G>::DEFAULT_USAGE | wgpu::BufferUsages::COPY_SRC,
+        );
 
         log::debug!("Basic editor created");
 
@@ -52,14 +52,17 @@ impl<G: GaussianPod> Editor<G> {
             model_transform_buffer,
             gaussian_transform_buffer,
             gaussians_buffer,
-
-            modifiers: modifiers.into_iter().map(Into::into).collect(),
         }
     }
 
     /// Apply the modifiers to the Gaussians.
-    pub fn apply(&self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder) {
-        for modifier in &self.modifiers {
+    pub fn apply<'a>(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        modifiers: impl IntoIterator<Item = &'a dyn Modifier<G>>,
+    ) {
+        for modifier in modifiers.into_iter() {
             modifier.apply(
                 device,
                 encoder,
