@@ -1,8 +1,7 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_core::DownloadableBufferWrapper;
-use wgpu_3dgs_editor as gs;
+use wgpu_3dgs_editor::{self as gs};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -10,7 +9,7 @@ use wgpu_3dgs_editor as gs;
     version,
     about,
     long_about = "\
-    A 3D Gaussian splatting editor to filter selected Gaussians in a model.
+    A 3D Gaussian splatting editor to apply basic modifiers to selected Gaussians in a model.
     "
 )]
 struct Args {
@@ -72,6 +71,46 @@ struct Args {
         default_value = "2.0,0.0,0.0"
     )]
     offset: Vec<f32>,
+
+    /// Whether to override the RGB color of the selected Gaussians.
+    #[arg(long)]
+    override_rgb: bool,
+
+    /// If [`Args::override_rgb`], then it is used to override the RGB color,
+    /// otherwise it is used to apply HSV modifications.
+    ///
+    /// Normally hue (H) is in [0, 1], saturation (S) and value (V) are in [0, 2].
+    /// This function adds the hue and multiplies saturation and value.
+    #[arg(
+        long,
+        allow_hyphen_values = true,
+        num_args = 3,
+        value_delimiter = ',',
+        default_value = "0.0,1.0,1.0"
+    )]
+    rgb_or_hsv: Vec<f32>,
+
+    /// Alpha is multiplied with the original alpha.
+    #[arg(long, allow_hyphen_values = true, default_value = "1.0")]
+    alpha: f32,
+
+    /// Contrast is applied to the RGB color.
+    ///
+    /// Normally the range is [-1, 1].
+    #[arg(long, allow_hyphen_values = true, default_value = "0.0")]
+    contrast: f32,
+
+    /// Exposure is applied to the RGB color.
+    ///
+    /// Normally the range is [-5, 5].
+    #[arg(long, allow_hyphen_values = true, default_value = "0.0")]
+    exposure: f32,
+
+    /// Gamma is applied to the RGB color.
+    ///
+    /// Normally the range is [0, 5].
+    #[arg(long, allow_hyphen_values = true, default_value = "1.0")]
+    gamma: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -80,7 +119,7 @@ enum Shape {
     Box,
 }
 
-type GaussianPod = gs::core::GaussianPodWithShSingleCov3dSingleConfigs;
+type GaussianPod = gs::core::GaussianPodWithShSingleCov3dRotScaleConfigs;
 
 #[tokio::main]
 async fn main() {
@@ -124,21 +163,44 @@ async fn main() {
     let mut reader = std::io::BufReader::new(f);
     let gaussians = gs::core::Gaussians::read_ply(&mut reader).expect("gaussians");
 
-    log::debug!("Creating gaussians buffer");
-    let gaussians_buffer =
-        gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians.gaussians);
-
-    log::debug!("Creating model transform buffer");
-    let model_transform = gs::core::ModelTransformBuffer::new(&device);
-
-    log::debug!("Creating Gaussian transform buffer");
-    let gaussian_transform = gs::core::GaussianTransformBuffer::new(&device);
+    log::debug!("Creating editor");
+    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
 
     log::debug!("Creating shape selection compute bundle");
     let shape_selection = shape(&device);
 
-    log::debug!("Creating selection bundle");
-    let selection_bundle = gs::SelectionBundle::new::<GaussianPod>(&device, vec![shape_selection]);
+    log::debug!("Creating basic selection modifier");
+    let mut basic_selection_modifier = gs::BasicSelectionModifier::new::<GaussianPod>(
+        &device,
+        &editor.gaussians_buffer,
+        &editor.model_transform_buffer,
+        &editor.gaussian_transform_buffer,
+        vec![shape_selection],
+    );
+
+    log::debug!("Configuring modifiers");
+    match args.override_rgb {
+        true => basic_selection_modifier
+            .basic_color_modifiers_buffer
+            .update_with_override_rgb(
+                &queue,
+                Vec3::from_slice(&args.rgb_or_hsv),
+                args.alpha,
+                args.contrast,
+                args.exposure,
+                args.gamma,
+            ),
+        false => basic_selection_modifier
+            .basic_color_modifiers_buffer
+            .update_with_hsv_modifiers(
+                &queue,
+                Vec3::from_slice(&args.rgb_or_hsv),
+                args.alpha,
+                args.contrast,
+                args.exposure,
+                args.gamma,
+            ),
+    }
 
     log::debug!("Creating shape selection buffers");
     let shape_selection_buffers = (0..repeat)
@@ -154,7 +216,7 @@ async fn main() {
     let shape_selection_bind_groups = shape_selection_buffers
         .iter()
         .map(|buffer| {
-            selection_bundle.bundles[0]
+            basic_selection_modifier.selection.bundles[0]
                 .create_bind_group(
                     &device,
                     // index 0 is the Gaussians buffer, so we use 1,
@@ -167,7 +229,7 @@ async fn main() {
         .collect::<Vec<_>>();
 
     log::debug!("Creating selection expression");
-    let selection_expr = shape_selection_bind_groups.into_iter().fold(
+    basic_selection_modifier.selection_expr = shape_selection_bind_groups.into_iter().fold(
         gs::SelectionExpr::Identity,
         |acc, bind_group| {
             acc.union(gs::SelectionExpr::selection(
@@ -177,25 +239,18 @@ async fn main() {
         },
     );
 
-    log::debug!("Creating destination buffer");
-    let dest = gs::SelectionBuffer::new(&device, gaussians_buffer.len() as u32);
-
-    log::info!("Starting selection process");
+    log::info!("Starting editing process");
     let time = std::time::Instant::now();
 
-    log::debug!("Selecting Gaussians");
+    log::debug!("Editing Gaussians");
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Selection Encoder"),
+        label: Some("Edit Encoder"),
     });
 
-    selection_bundle.evaluate(
+    editor.apply(
         &device,
         &mut encoder,
-        &selection_expr,
-        &dest,
-        &model_transform,
-        &gaussian_transform,
-        &gaussians_buffer,
+        [&basic_selection_modifier as &dyn gs::Modifier<GaussianPod>],
     );
 
     queue.submit(Some(encoder.finish()));
@@ -205,30 +260,21 @@ async fn main() {
 
     log::info!("Editing process completed in {:?}", time.elapsed());
 
-    log::debug!("Filtering Gaussians");
-    let selected_gaussians = gs::core::Gaussians {
-        gaussians: dest
-            .download::<u32>(&device, &queue)
+    log::debug!("Downloading Gaussians");
+    let modified_gaussians = gs::core::Gaussians {
+        gaussians: editor
+            .gaussians_buffer
+            .download_gaussians(&device, &queue)
             .await
-            .expect("selected download")
-            .iter()
-            .flat_map(|group| {
-                std::iter::repeat_n(group, 32)
-                    .enumerate()
-                    .map(|(i, g)| g & (1 << i) != 0)
-            })
-            .zip(gaussians.gaussians.iter())
-            .filter(|(selected, _)| *selected)
-            .map(|(_, g)| g.clone())
-            .collect::<Vec<_>>(),
+            .expect("gaussians download"),
     };
 
     log::debug!("Writing modified Gaussians to output file");
     let output_file = std::fs::File::create(&args.output).expect("output file");
     let mut writer = std::io::BufWriter::new(output_file);
-    selected_gaussians
+    modified_gaussians
         .write_ply(&mut writer)
         .expect("write modified Gaussians to output file");
 
-    log::info!("Filtered Gaussians written to {}", args.output);
+    log::info!("Modified Gaussians written to {}", args.output);
 }

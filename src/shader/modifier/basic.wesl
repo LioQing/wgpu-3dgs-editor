@@ -4,13 +4,14 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
 };
-import wgpu_3dgs_editor::{
+import wgpu_3dgs_editor::modifier::{
     utils::{
         BasicColorModifiers,
+        RotScale,
         apply_basic_color_modifiers,
         apply_basic_transform_modifiers,
     },
-    consts,
+    modifier_consts,
 };
 
 @group(0) @binding(0)
@@ -29,11 +30,9 @@ var<uniform> transform_flags: u32;
 var<uniform> color_modifiers: BasicColorModifiers;
 
 @group(1) @binding(2)
-var<uniform> scale_rotation: mat3x3<f32>;
+var<uniform> rot_scale: RotScale;
 
-@if(selection_buffer)
-@group(1) @binding(3)
-var<storage, read> selection: array<u32>;
+@group(1) @binding(3) var<storage, read> selection: array<u32>;
 
 override workgroup_size: u32;
 
@@ -52,7 +51,7 @@ fn main(
         let word_index = index / 32u;
         let bit_index = index % 32u;
         let bit_mask = 1u << bit_index;
-        if selection[word_index] & bit_mask == 0u {
+        if (selection[word_index] & bit_mask) == 0 {
             return;
         }
     }
@@ -69,18 +68,18 @@ fn main(
         vec4<f32>(0.0, 0.0, 0.0, 1.0),
         vec3<f32>(1.0, 1.0, 1.0),
     );
-    if (transform_flags & consts::transform_flags_model) != 0 {
+    if (transform_flags & modifier_consts::transform_flags_model) != 0 {
         applied_model_transform = model_transform;
     }
 
-    var applied_scale_rotation = scale_rotation;
-    if (transform_flags & consts::transform_flags_gaussian) != 0 {
-        applied_scale_rotation *= gaussian_transform.size;
+    var applied_rot_scale = rot_scale;
+    if (transform_flags & modifier_consts::transform_flags_gaussian) != 0 {
+        applied_rot_scale.scale *= gaussian_transform.size;
     }
 
     gaussian = apply_basic_transform_modifiers(
         applied_model_transform,
-        applied_scale_rotation,
+        applied_rot_scale,
         gaussian,
     );
 

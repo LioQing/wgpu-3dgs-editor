@@ -1,5 +1,5 @@
 use crate::{
-    BasicColorModifiersBuffer, ScaleRotationBuffer, SelectionBuffer, TransformFlagsBuffer,
+    BasicColorModifiersBuffer, RotScaleBuffer, SelectionBuffer, TransformFlagsBuffer,
     core::{
         self, ComputeBundle, ComputeBundleBuilder, GaussianPod, GaussianTransformBuffer,
         GaussiansBuffer, ModelTransformBuffer, buffer_wrapper_arr,
@@ -94,7 +94,7 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
 /// A specialized [`ComputeBundle`] for some built-in basic modifiers.
 ///
 /// This bundle includes the modifiers for [`BasicColorModifiersBuffer`],
-/// [`ScaleRotationBuffer`], and [`TransformFlagsBuffer`] (which provides flags for applying
+/// [`RotScaleBuffer`], and [`TransformFlagsBuffer`] (which provides flags for applying
 /// [`core::ModelTransformBuffer`] and [`core::GaussianTransformBuffer`]).
 #[derive(Debug)]
 pub struct BasicModifiersBundle<B = wgpu::BindGroup> {
@@ -190,7 +190,7 @@ impl BasicModifiersBundle {
         gaussian_transform_buffer: &GaussianTransformBuffer,
         transform_flags_buffer: &TransformFlagsBuffer,
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
-        scale_rotation_buffer: &ScaleRotationBuffer,
+        rot_scale_buffer: &RotScaleBuffer,
     ) -> Self {
         Self::create_bundle_builder::<G>(false)
             .build(
@@ -205,7 +205,7 @@ impl BasicModifiersBundle {
                     buffer_wrapper_arr![
                         transform_flags_buffer,
                         basic_color_modifiers_buffer,
-                        scale_rotation_buffer,
+                        rot_scale_buffer,
                     ]
                     .to_vec(),
                 ],
@@ -214,6 +214,7 @@ impl BasicModifiersBundle {
                 bundle,
                 has_selection: false,
             })
+            .map_err(|e| log::error!("{e}"))
             .expect("basic modifiers bundle")
     }
 
@@ -225,7 +226,7 @@ impl BasicModifiersBundle {
         gaussian_transform_buffer: &GaussianTransformBuffer,
         transform_flags_buffer: &TransformFlagsBuffer,
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
-        scale_rotation_buffer: &ScaleRotationBuffer,
+        rot_scale_buffer: &RotScaleBuffer,
         selection_buffer: &SelectionBuffer,
     ) -> Self {
         Self::create_bundle_builder::<G>(true)
@@ -241,7 +242,7 @@ impl BasicModifiersBundle {
                     buffer_wrapper_arr![
                         transform_flags_buffer,
                         basic_color_modifiers_buffer,
-                        scale_rotation_buffer,
+                        rot_scale_buffer,
                         selection_buffer,
                     ]
                     .to_vec(),
@@ -251,6 +252,7 @@ impl BasicModifiersBundle {
                 bundle,
                 has_selection: false,
             })
+            .map_err(|e| log::error!("{e}"))
             .expect("basic modifiers bundle")
     }
 
@@ -281,13 +283,13 @@ impl BasicModifiersBundle {
                 resolver
             })
             .main_shader(wesl::ModulePath::from_path(
-                "wgpu_3dgs_editor/modifiers/basic",
+                "wgpu_3dgs_editor/modifier/basic",
             ))
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
                 features: G::features()
                     .into_iter()
-                    .chain(std::iter::once(("has_selection", has_selection)))
+                    .chain(std::iter::once(("selection_buffer", has_selection)))
                     .map(|(k, v)| (k.to_string(), v))
                     .collect(),
                 ..Default::default()
