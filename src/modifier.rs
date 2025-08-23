@@ -1,8 +1,8 @@
 use crate::{
     BasicColorModifiersBuffer, RotScaleBuffer, SelectionBuffer, TransformFlagsBuffer,
     core::{
-        self, ComputeBundle, ComputeBundleBuilder, GaussianPod, GaussianTransformBuffer,
-        GaussiansBuffer, ModelTransformBuffer, buffer_wrapper_arr,
+        self, BufferWrapper, ComputeBundle, ComputeBundleBuilder, GaussianPod,
+        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
     },
     shader,
 };
@@ -196,18 +196,16 @@ impl BasicModifiersBundle {
             .build(
                 &device,
                 [
-                    buffer_wrapper_arr![
-                        gaussians_buffer,
-                        model_transform_buffer,
-                        gaussian_transform_buffer,
-                    ]
-                    .to_vec(),
-                    buffer_wrapper_arr![
-                        transform_flags_buffer,
-                        basic_color_modifiers_buffer,
-                        rot_scale_buffer,
-                    ]
-                    .to_vec(),
+                    [
+                        gaussians_buffer.buffer().as_entire_binding(),
+                        model_transform_buffer.buffer().as_entire_binding(),
+                        gaussian_transform_buffer.buffer().as_entire_binding(),
+                    ],
+                    [
+                        transform_flags_buffer.buffer().as_entire_binding(),
+                        basic_color_modifiers_buffer.buffer().as_entire_binding(),
+                        rot_scale_buffer.buffer().as_entire_binding(),
+                    ],
                 ],
             )
             .map(|bundle| Self {
@@ -233,17 +231,17 @@ impl BasicModifiersBundle {
             .build(
                 &device,
                 [
-                    buffer_wrapper_arr![
-                        gaussians_buffer,
-                        model_transform_buffer,
-                        gaussian_transform_buffer,
+                    [
+                        gaussians_buffer.buffer().as_entire_binding(),
+                        model_transform_buffer.buffer().as_entire_binding(),
+                        gaussian_transform_buffer.buffer().as_entire_binding(),
                     ]
                     .to_vec(),
-                    buffer_wrapper_arr![
-                        transform_flags_buffer,
-                        basic_color_modifiers_buffer,
-                        rot_scale_buffer,
-                        selection_buffer,
+                    [
+                        transform_flags_buffer.buffer().as_entire_binding(),
+                        basic_color_modifiers_buffer.buffer().as_entire_binding(),
+                        rot_scale_buffer.buffer().as_entire_binding(),
+                        selection_buffer.buffer().as_entire_binding(),
                     ]
                     .to_vec(),
                 ],

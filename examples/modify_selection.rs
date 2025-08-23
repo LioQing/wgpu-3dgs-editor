@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_editor::{self as gs};
+use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -222,7 +222,7 @@ async fn main() {
                     // index 0 is the Gaussians buffer, so we use 1,
                     // see docs of create_sphere_bundle or create_box_bundle
                     1,
-                    gs::core::buffer_wrapper_arr![buffer],
+                    [buffer.buffer().as_entire_binding()],
                 )
                 .expect("bind group")
         })

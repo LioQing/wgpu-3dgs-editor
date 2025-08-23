@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-/// A struct to handle selection and [`BasicModifiersBundle`] together.
+/// A struct to handle custom selection bundles and [`BasicModifiersBundle`] together.
 #[derive(Debug)]
 pub struct BasicSelectionModifier {
     pub selection_expr: SelectionExpr,

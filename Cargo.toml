@@ -22,6 +22,14 @@ categories = ["graphics", "rendering", "wasm"]
 name = "wgpu_3dgs_editor"
 path = "src/lib.rs"
 
+[[example]]
+name = "filter-selection"
+path = "examples/filter_selection.rs"
+
+[[example]]
+name = "modify-selection"
+path = "examples/modify_selection.rs"
+
 [dependencies]
 wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
