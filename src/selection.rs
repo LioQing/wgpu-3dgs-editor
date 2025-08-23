@@ -4,7 +4,7 @@ use crate::{
     SelectionBuffer, SelectionOpBuffer,
     core::{
         self, BufferWrapper, ComputeBundle, ComputeBundleBuilder, GaussianPod,
-        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer, buffer_wrapper_arr,
+        GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
     },
     shader,
 };
@@ -16,6 +16,8 @@ use crate::{
 /// [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], and [`SelectionExpr::Selection`] are
 /// custom operations that can be defined with additional [`ComputeBundle`]s, so they also
 /// carry a vector of bind groups that are used in the operation when dispatched/evaluated.
+/// These vectors should correspond to the selection bundle's bind groups starting at index 1,
+/// because index 0 is reserved for [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
 #[derive(Debug, Default)]
 pub enum SelectionExpr {
     /// Apply an identity operation.
@@ -396,7 +398,18 @@ impl SelectionBundle {
 
         let gaussians_bind_group = self
             .primitive_bundle
-            .create_bind_group(device, 0, buffer_wrapper_arr![&op, &source, d, m, g, gs])
+            .create_bind_group(
+                device,
+                0,
+                [
+                    op.buffer().as_entire_binding(),
+                    source.buffer().as_entire_binding(),
+                    d.buffer().as_entire_binding(),
+                    m.buffer().as_entire_binding(),
+                    g.buffer().as_entire_binding(),
+                    gs.buffer().as_entire_binding(),
+                ],
+            )
             .expect("gaussians bind group");
 
         match expr.custom_op_index_and_bind_groups() {
