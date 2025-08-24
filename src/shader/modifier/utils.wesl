@@ -116,13 +116,13 @@ fn apply_scale_rot_cov3d(
 @if(cov3d_half) fn apply_scale_rot(
     scale_rot: mat3x3<f32>,
     gaussian: Gaussian,
-) -> array<f32, 3> {
+) -> array<u32, 3> {
     let modified_cov3d = apply_scale_rot_cov3d(scale_rot, gaussian_unpack_cov3d(gaussian));
  
-    return array<f32, 3>(
-        pack2x16float(modified_cov3d[0], modified_cov3d[1]),
-        pack2x16float(modified_cov3d[2], modified_cov3d[3]),
-        pack2x16float(modified_cov3d[4], modified_cov3d[5]),
+    return array<u32, 3>(
+        pack2x16float(vec2<f32>(modified_cov3d[0], modified_cov3d[1])),
+        pack2x16float(vec2<f32>(modified_cov3d[2], modified_cov3d[3])),
+        pack2x16float(vec2<f32>(modified_cov3d[4], modified_cov3d[5])),
     );
 }
 
