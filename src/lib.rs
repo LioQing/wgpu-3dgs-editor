@@ -3,6 +3,7 @@
 mod buffer;
 mod error;
 mod modifier;
+mod non_destructive_modifier;
 mod selection;
 mod selection_modifier;
 pub mod shader;
@@ -10,6 +11,7 @@ pub mod shader;
 pub use buffer::*;
 pub use error::*;
 pub use modifier::*;
+pub use non_destructive_modifier::*;
 pub use selection::*;
 pub use selection_modifier::*;
 
