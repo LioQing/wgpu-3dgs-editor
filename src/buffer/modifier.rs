@@ -74,7 +74,7 @@ pub struct BasicColorModifiersPod {
     pub contrast: f32,
     pub exposure: f32,
     pub gamma: f32,
-    _padding: u32,
+    pub _padding: u32,
 }
 
 impl BasicColorModifiersPod {
@@ -208,7 +208,7 @@ impl BufferWrapper for RotScaleBuffer {
 pub struct RotScalePod {
     pub rot: Quat,
     pub scale: Vec3,
-    _padding: u32,
+    pub _padding: u32,
 }
 
 impl RotScalePod {
