@@ -1,7 +1,7 @@
 use glam::*;
 use wgpu::util::DeviceExt;
 
-use crate::core::BufferWrapper;
+use crate::core::{self, BufferWrapper, FixedSizeBufferWrapper};
 
 /// The selection storage buffer for storing selected Gaussians as a bitvec.
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ impl SelectionBuffer {
         let data = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(format!("{label} Selection Buffer").as_str()),
             size: size as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            usage: Self::DEFAULT_USAGES,
             mapped_at_creation: false,
         });
 
@@ -29,8 +29,18 @@ impl SelectionBuffer {
 }
 
 impl BufferWrapper for SelectionBuffer {
+    const DEFAULT_USAGES: wgpu::BufferUsages = wgpu::BufferUsages::from_bits_retain(
+        wgpu::BufferUsages::STORAGE.bits() | wgpu::BufferUsages::COPY_SRC.bits(),
+    );
+
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
+    }
+}
+
+impl From<SelectionBuffer> for wgpu::Buffer {
+    fn from(wrapper: SelectionBuffer) -> Self {
+        wrapper.0
     }
 }
 
@@ -44,7 +54,7 @@ impl SelectionOpBuffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Selection Operation Buffer"),
             contents: bytemuck::bytes_of(&op),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: Self::DEFAULT_USAGES,
         });
 
         Self(buffer)
@@ -62,6 +72,24 @@ impl BufferWrapper for SelectionOpBuffer {
     }
 }
 
+impl From<SelectionOpBuffer> for wgpu::Buffer {
+    fn from(wrapper: SelectionOpBuffer) -> Self {
+        wrapper.0
+    }
+}
+
+impl TryFrom<wgpu::Buffer> for SelectionOpBuffer {
+    type Error = core::Error;
+
+    fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
+        Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
+    }
+}
+
+impl FixedSizeBufferWrapper for SelectionOpBuffer {
+    type Pod = u32;
+}
+
 /// An inverse transform uniform buffer for selection operations.
 #[derive(Debug, Clone)]
 pub struct InvTransformBuffer(wgpu::Buffer);
@@ -72,7 +100,7 @@ impl InvTransformBuffer {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Inverse Transform Buffer"),
             size: std::mem::size_of::<Mat4>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: Self::DEFAULT_USAGES,
             mapped_at_creation: false,
         });
 
@@ -101,4 +129,22 @@ impl BufferWrapper for InvTransformBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
     }
+}
+
+impl From<InvTransformBuffer> for wgpu::Buffer {
+    fn from(wrapper: InvTransformBuffer) -> Self {
+        wrapper.0
+    }
+}
+
+impl TryFrom<wgpu::Buffer> for InvTransformBuffer {
+    type Error = core::Error;
+
+    fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
+        Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
+    }
+}
+
+impl FixedSizeBufferWrapper for InvTransformBuffer {
+    type Pod = Mat4;
 }
