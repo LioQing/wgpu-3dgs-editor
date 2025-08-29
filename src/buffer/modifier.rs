@@ -1,7 +1,7 @@
 use glam::*;
 use wgpu::util::DeviceExt;
 
-use crate::core::BufferWrapper;
+use crate::core::{self, BufferWrapper, FixedSizeBufferWrapper};
 
 /// The basic color modifiers buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
 #[derive(Debug)]
@@ -13,7 +13,7 @@ impl BasicColorModifiersBuffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Basic Color Modifiers Buffer"),
             contents: bytemuck::bytes_of(&BasicColorModifiersPod::default()),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: Self::DEFAULT_USAGES,
         });
 
         Self(buffer)
@@ -61,6 +61,24 @@ impl BufferWrapper for BasicColorModifiersBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
     }
+}
+
+impl From<BasicColorModifiersBuffer> for wgpu::Buffer {
+    fn from(wrapper: BasicColorModifiersBuffer) -> Self {
+        wrapper.0
+    }
+}
+
+impl TryFrom<wgpu::Buffer> for BasicColorModifiersBuffer {
+    type Error = core::Error;
+
+    fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
+        Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
+    }
+}
+
+impl FixedSizeBufferWrapper for BasicColorModifiersBuffer {
+    type Pod = BasicColorModifiersPod;
 }
 
 /// The POD representation of the basic color modifiers buffer.
@@ -138,7 +156,7 @@ impl TransformFlagsBuffer {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Transform Flags Buffer"),
             size: std::mem::size_of::<u32>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: Self::DEFAULT_USAGES,
             mapped_at_creation: false,
         });
 
@@ -155,6 +173,24 @@ impl BufferWrapper for TransformFlagsBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
     }
+}
+
+impl From<TransformFlagsBuffer> for wgpu::Buffer {
+    fn from(wrapper: TransformFlagsBuffer) -> Self {
+        wrapper.0
+    }
+}
+
+impl TryFrom<wgpu::Buffer> for TransformFlagsBuffer {
+    type Error = core::Error;
+
+    fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
+        Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
+    }
+}
+
+impl FixedSizeBufferWrapper for TransformFlagsBuffer {
+    type Pod = u32;
 }
 
 bitflags::bitflags! {
@@ -179,7 +215,7 @@ impl RotScaleBuffer {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Scale Rot Buffer"),
             contents: bytemuck::bytes_of(&RotScalePod::default()),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            usage: Self::DEFAULT_USAGES,
         });
 
         Self(buffer)
@@ -200,6 +236,24 @@ impl BufferWrapper for RotScaleBuffer {
     fn buffer(&self) -> &wgpu::Buffer {
         &self.0
     }
+}
+
+impl From<RotScaleBuffer> for wgpu::Buffer {
+    fn from(wrapper: RotScaleBuffer) -> Self {
+        wrapper.0
+    }
+}
+
+impl TryFrom<wgpu::Buffer> for RotScaleBuffer {
+    type Error = core::Error;
+
+    fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
+        Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
+    }
+}
+
+impl FixedSizeBufferWrapper for RotScaleBuffer {
+    type Pod = RotScalePod;
 }
 
 /// The POD representation of the scale and rotation buffer.

@@ -32,7 +32,7 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         let original_gaussians = GaussiansBuffer::new_empty_with_usage(
             device,
             gaussians.len(),
-            GaussiansBuffer::<G>::DEFAULT_USAGE | wgpu::BufferUsages::COPY_SRC,
+            GaussiansBuffer::<G>::DEFAULT_USAGES | wgpu::BufferUsages::COPY_SRC,
         );
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

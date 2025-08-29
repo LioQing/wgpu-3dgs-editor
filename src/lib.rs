@@ -18,7 +18,8 @@ pub use selection_modifier::*;
 pub use wgpu_3dgs_core as core;
 
 use wgpu_3dgs_core::{
-    GaussianPod, GaussianTransformBuffer, Gaussians, GaussiansBuffer, ModelTransformBuffer,
+    BufferWrapper, GaussianPod, GaussianTransformBuffer, Gaussians, GaussiansBuffer,
+    ModelTransformBuffer,
 };
 
 /// An editor for Gaussians.
@@ -45,7 +46,7 @@ impl<G: GaussianPod> Editor<G> {
         let gaussians_buffer = GaussiansBuffer::new_with_usage(
             device,
             &gaussians.gaussians,
-            GaussiansBuffer::<G>::DEFAULT_USAGE | wgpu::BufferUsages::COPY_SRC,
+            GaussiansBuffer::<G>::DEFAULT_USAGES | wgpu::BufferUsages::COPY_SRC,
         );
 
         log::debug!("Basic editor created");
