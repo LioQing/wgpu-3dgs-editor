@@ -1,149 +1,110 @@
-use wesl::PkgModule;
+use wesl::{Pkg, PkgModule};
 
-pub struct Mod;
+use crate::core;
 
-impl PkgModule for Mod {
-    fn name(&self) -> &'static str {
-        "wgpu_3dgs_editor"
-    }
+pub const PACKAGE: Pkg = Pkg {
+    crate_name: "wgpu-3dgs-editor",
+    root: &MODULE,
+    dependencies: &[&core::shader::PACKAGE],
+};
 
-    fn source(&self) -> &'static str {
-        ""
-    }
-
-    fn submodules(&self) -> &[&dyn PkgModule] {
-        static SUBMODULES: &[&dyn PkgModule] = &[&selection::Mod, &modifier::Mod];
-        SUBMODULES
-    }
-
-    fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
-        match name {
-            "selection" => Some(&selection::Mod),
-            "modifier" => Some(&modifier::Mod),
-            _ => selection::Mod
-                .submodule(name)
-                .or_else(|| modifier::Mod.submodule(name)),
-        }
-    }
-}
-
-macro_rules! submodule {
-    ($name:ident $(, $dir:literal)? override $mod_name:ident) => {
-        paste::paste! {
-            pub mod $mod_name {
-                pub struct Mod;
-
-                impl wesl::PkgModule for Mod {
-                    fn name(&self) -> &'static str {
-                        stringify!($name)
-                    }
-
-                    fn source(&self) -> &'static str {
-                        include_str!(concat!("shader/", $($dir,)? stringify!($name), ".wesl"))
-                    }
-
-                    fn submodules(&self) -> &[&dyn wesl::PkgModule] {
-                        &[]
-                    }
-
-                    fn submodule(&self, _name: &str) -> Option<&dyn wesl::PkgModule> {
-                        None
-                    }
-                }
-            }
-        }
-    };
-    ($name:ident $(, $dir:literal)?) => {
-        submodule!($name $(, $dir)? override $name);
-    };
-}
+pub const MODULE: PkgModule = PkgModule {
+    name: "wgpu_3dgs_editor",
+    source: "",
+    submodules: &[&selection::MODULE, &modifier::MODULE],
+};
 
 pub mod selection {
-    use super::*;
+    use super::PkgModule;
 
-    macro_rules! selection_submodule {
-        ($name:ident) => {
-            submodule!($name, "selection/");
-        };
-        ($name:ident override $mod_name:ident) => {
-            submodule!($name, "selection/" override $mod_name);
+    pub const MODULE: PkgModule = PkgModule {
+        name: "selection",
+        source: "",
+        submodules: &[
+            &consts::MODULE,
+            &primitive_ops::MODULE,
+            &sphere::MODULE,
+            &r#box::MODULE,
+        ],
+    };
+
+    pub mod consts {
+        use super::PkgModule;
+
+        pub const MODULE: PkgModule = PkgModule {
+            name: "consts",
+            source: include_str!("shader/selection/consts.wesl"),
+            submodules: &[],
         };
     }
 
-    pub struct Mod;
+    pub mod primitive_ops {
+        use super::PkgModule;
 
-    impl PkgModule for Mod {
-        fn name(&self) -> &'static str {
-            "selection"
-        }
-
-        fn source(&self) -> &'static str {
-            ""
-        }
-
-        fn submodules(&self) -> &[&dyn PkgModule] {
-            static SUBMODULES: &[&dyn PkgModule] =
-                &[&consts::Mod, &primitive_ops::Mod, &sphere::Mod, &r#box::Mod];
-            SUBMODULES
-        }
-
-        fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
-            match name {
-                "consts" => Some(&consts::Mod),
-                "primitive_ops" => Some(&primitive_ops::Mod),
-                "sphere" => Some(&sphere::Mod),
-                "box" => Some(&r#box::Mod),
-                _ => None,
-            }
-        }
+        pub const MODULE: PkgModule = PkgModule {
+            name: "primitive_ops",
+            source: include_str!("shader/selection/primitive_ops.wesl"),
+            submodules: &[],
+        };
     }
 
-    selection_submodule!(consts);
-    selection_submodule!(primitive_ops);
-    selection_submodule!(sphere);
-    selection_submodule!(box override r#box);
+    pub mod sphere {
+        use super::PkgModule;
+
+        pub const MODULE: PkgModule = PkgModule {
+            name: "sphere",
+            source: include_str!("shader/selection/sphere.wesl"),
+            submodules: &[],
+        };
+    }
+
+    pub mod r#box {
+        use super::PkgModule;
+
+        pub const MODULE: PkgModule = PkgModule {
+            name: "box",
+            source: include_str!("shader/selection/box.wesl"),
+            submodules: &[],
+        };
+    }
 }
 
 pub mod modifier {
-    use super::*;
+    use super::PkgModule;
 
-    macro_rules! modifier_submodule {
-        ($name:ident) => {
-            submodule!($name, "modifier/");
-        };
-        ($name:ident override $mod_name:ident) => {
-            submodule!($name, "modifier/" override $mod_name);
+    pub const MODULE: PkgModule = PkgModule {
+        name: "modifier",
+        source: "",
+        submodules: &[&modifier_consts::MODULE, &utils::MODULE, &basic::MODULE],
+    };
+
+    pub mod modifier_consts {
+        use super::PkgModule;
+
+        pub const MODULE: PkgModule = PkgModule {
+            name: "modifier_consts",
+            source: include_str!("shader/modifier/modifier_consts.wesl"),
+            submodules: &[],
         };
     }
 
-    pub struct Mod;
+    pub mod utils {
+        use super::PkgModule;
 
-    impl PkgModule for Mod {
-        fn name(&self) -> &'static str {
-            "modifier"
-        }
-
-        fn source(&self) -> &'static str {
-            ""
-        }
-
-        fn submodules(&self) -> &[&dyn PkgModule] {
-            static SUBMODULES: &[&dyn PkgModule] =
-                &[&modifier_consts::Mod, &utils::Mod, &basic::Mod];
-            SUBMODULES
-        }
-
-        fn submodule(&self, name: &str) -> Option<&dyn PkgModule> {
-            match name {
-                "modifier_consts" => Some(&modifier_consts::Mod),
-                "utils" => Some(&utils::Mod),
-                "basic" => Some(&basic::Mod),
-                _ => None,
-            }
-        }
+        pub const MODULE: PkgModule = PkgModule {
+            name: "utils",
+            source: include_str!("shader/modifier/utils.wesl"),
+            submodules: &[],
+        };
     }
 
-    modifier_submodule!(modifier_consts);
-    modifier_submodule!(utils);
-    modifier_submodule!(basic);
+    pub mod basic {
+        use super::PkgModule;
+
+        pub const MODULE: PkgModule = PkgModule {
+            name: "basic",
+            source: include_str!("shader/modifier/basic.wesl"),
+            submodules: &[],
+        };
+    }
 }

@@ -264,7 +264,7 @@ impl BasicModifiersBundle {
     /// This is usually not called directly, but used internally to create the bundle.
     pub fn create_bundle_builder<'a, G: GaussianPod>(
         has_selection: bool,
-    ) -> ComputeBundleBuilder<'a, wesl::PkgResolver, wesl::ModulePath> {
+    ) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
         ComputeBundleBuilder::new()
             .label("Basic Modifiers")
             .bind_groups([
@@ -276,20 +276,25 @@ impl BasicModifiersBundle {
             ])
             .resolver({
                 let mut resolver = wesl::PkgResolver::new();
-                resolver.add_package(&core::shader::Mod);
-                resolver.add_package(&shader::Mod);
+                resolver.add_package(&core::shader::PACKAGE);
+                resolver.add_package(&shader::PACKAGE);
                 resolver
             })
-            .main_shader(wesl::ModulePath::from_path(
-                "wgpu_3dgs_editor/modifier/basic",
-            ))
+            .main_shader(
+                "wgpu_3dgs_editor::modifier::basic"
+                    .parse()
+                    .expect("modifier::basic module path"),
+            )
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
-                features: G::features()
-                    .into_iter()
-                    .chain(std::iter::once(("selection_buffer", has_selection)))
-                    .map(|(k, v)| (k.to_string(), v))
-                    .collect(),
+                features: wesl::Features {
+                    flags: G::features()
+                        .into_iter()
+                        .chain(std::iter::once(("selection_buffer", has_selection.into())))
+                        .map(|(k, v)| (k.to_string(), v.into()))
+                        .collect(),
+                    ..Default::default()
+                },
                 ..Default::default()
             })
     }

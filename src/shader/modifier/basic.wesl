@@ -4,7 +4,7 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
 };
-import wgpu_3dgs_editor::modifier::{
+import package::modifier::{
     utils::{
         BasicColorModifiers,
         RotScale,
