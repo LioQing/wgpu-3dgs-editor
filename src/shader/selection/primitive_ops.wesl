@@ -4,7 +4,7 @@ import wgpu_3dgs_core::{
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
 };
-import wgpu_3dgs_editor::selection::consts;
+import package::selection::consts;
 
 @group(0) @binding(0)
 var<uniform> op: u32;

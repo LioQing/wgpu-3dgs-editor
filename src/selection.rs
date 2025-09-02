@@ -437,16 +437,18 @@ impl SelectionBundle {
             .bind_group(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
             .resolver({
                 let mut resolver = wesl::PkgResolver::new();
-                resolver.add_package(&core::shader::Mod);
-                resolver.add_package(&shader::Mod);
+                resolver.add_package(&core::shader::PACKAGE);
+                resolver.add_package(&shader::PACKAGE);
                 resolver
             })
-            .main_shader(wesl::ModulePath::from_path(
-                "wgpu_3dgs_editor/selection/primitive_ops",
-            ))
+            .main_shader(
+                "wgpu_3dgs_editor::selection::primitive_ops"
+                    .parse()
+                    .expect("selection::primitive_ops module path"),
+            )
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
-                features: G::features_map(),
+                features: G::wesl_features(),
                 ..Default::default()
             })
             .build_without_bind_groups(&device)
@@ -479,8 +481,8 @@ impl SelectionBundle {
     /// - Bind group 1 is [`SelectionBundle::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub fn create_sphere_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
-        resolver.add_package(&core::shader::Mod);
-        resolver.add_package(&shader::Mod);
+        resolver.add_package(&core::shader::PACKAGE);
+        resolver.add_package(&shader::PACKAGE);
 
         ComputeBundleBuilder::new()
             .label("Sphere Selection")
@@ -488,12 +490,14 @@ impl SelectionBundle {
                 &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &Self::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
-            .main_shader(wesl::ModulePath::from_path(
-                "wgpu_3dgs_editor/selection/sphere",
-            ))
+            .main_shader(
+                "wgpu_3dgs_editor::selection::sphere"
+                    .parse()
+                    .expect("selection::sphere module path"),
+            )
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
-                features: G::features_map(),
+                features: G::wesl_features(),
                 ..Default::default()
             })
             .resolver(resolver)
@@ -527,8 +531,8 @@ impl SelectionBundle {
     /// - Bind group 1 is [`SelectionBundle::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub fn create_box_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
-        resolver.add_package(&core::shader::Mod);
-        resolver.add_package(&shader::Mod);
+        resolver.add_package(&core::shader::PACKAGE);
+        resolver.add_package(&shader::PACKAGE);
 
         ComputeBundleBuilder::new()
             .label("Box Selection")
@@ -536,12 +540,14 @@ impl SelectionBundle {
                 &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &Self::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
-            .main_shader(wesl::ModulePath::from_path(
-                "wgpu_3dgs_editor/selection/box",
-            ))
+            .main_shader(
+                "wgpu_3dgs_editor::selection::box"
+                    .parse()
+                    .expect("selection::box module path"),
+            )
             .entry_point("main")
             .compile_options(wesl::CompileOptions {
-                features: G::features_map(),
+                features: G::wesl_features(),
                 ..Default::default()
             })
             .resolver(resolver)

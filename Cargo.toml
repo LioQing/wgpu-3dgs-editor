@@ -45,7 +45,7 @@ log = "0.4"
 paste = "1.0"
 thiserror = "2.0"
 wgpu = "26.0"
-wesl = "0.1"
+wesl = "0.2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
