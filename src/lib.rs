@@ -24,9 +24,17 @@ use wgpu_3dgs_core::{
 
 /// An editor for Gaussians.
 ///
-/// This enables the application of a sequence of [`Modifier`]s to the Gaussians.
+/// This enables the application of a sequence of [`Modifier`]s to the Gaussians by storing
+/// the necessary buffers, including:
+/// - [`ModelTransformBuffer`]
+/// - [`GaussianTransformBuffer`]
+/// - [`GaussiansBuffer`]
 ///
-/// Note that some [`GaussianPod`] configurations may not be able to be downloaded after modification.
+/// If you wish to manage these buffers yourself, you do not need to use this struct.
+///
+/// Note that some [`GaussianPod`] configurations may not be able to be downloaded after
+/// modification, see documentations of [`GaussianShConfig`](core::GaussianShConfig) and
+/// [`GaussianCov3dConfig`](core::GaussianCov3dConfig) for details.
 pub struct Editor<G: GaussianPod> {
     pub model_transform_buffer: ModelTransformBuffer,
     pub gaussian_transform_buffer: GaussianTransformBuffer,
@@ -34,7 +42,7 @@ pub struct Editor<G: GaussianPod> {
 }
 
 impl<G: GaussianPod> Editor<G> {
-    /// Create a new basic editor.
+    /// Create a new editor.
     pub fn new(device: &wgpu::Device, gaussians: &Gaussians) -> Self {
         log::debug!("Creating model transform buffer");
         let model_transform_buffer = ModelTransformBuffer::new(device);

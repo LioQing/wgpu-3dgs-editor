@@ -1,5 +1,4 @@
 import wgpu_3dgs_core::{
-    compute_bundle,
     gaussian::Gaussian,
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
@@ -26,9 +25,9 @@ var<storage, read> gaussians: array<Gaussian>;
 
 override workgroup_size: u32;
 
-@compute @workgroup_size(workgroup_size, 1, 1)
-fn main(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
-    let index = compute_bundle::index(wid, workgroup_size, lid);
+@compute @workgroup_size(workgroup_size)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let index = id.x;
 
     if (index >= arrayLength(&dest)) {
         return;

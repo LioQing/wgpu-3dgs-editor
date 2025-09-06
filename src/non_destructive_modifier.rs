@@ -1,11 +1,15 @@
 use crate::{
-    Error, Modifier,
+    Modifier, NonDestructiveModifierCreateError,
     core::{
-        BufferWrapper, GaussianPod, GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
+        BufferWrapper, GaussianPod, GaussianTransformBuffer, GaussiansBuffer,
+        GaussiansBufferUpdateError, ModelTransformBuffer,
     },
 };
 
 /// A wrapper for any [`Modifier`] to not modify the original Gaussians.
+///
+/// This modifier stores a copy of the original Gaussians, whenever it is applied, it first
+/// copies original Gaussians to the destination Gaussians buffer, then applies the inner modifier.
 pub struct NonDestructiveModifier<G: GaussianPod, M: Modifier<G>> {
     pub modifier: M,
     pub original_gaussians: GaussiansBuffer<G>,
@@ -20,13 +24,13 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         queue: &wgpu::Queue,
         modifier: M,
         gaussians: &GaussiansBuffer<G>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, NonDestructiveModifierCreateError> {
         if !gaussians
             .buffer()
             .usage()
             .contains(wgpu::BufferUsages::COPY_SRC)
         {
-            return Err(Error::MissingCopySrcBufferUsage);
+            return Err(NonDestructiveModifierCreateError::MissingCopySrcBufferUsage);
         }
 
         let original_gaussians = GaussiansBuffer::new_empty_with_usage(
@@ -60,8 +64,7 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
 
     /// Try apply the modifier.
     ///
-    /// Returns [`Error::OriginalTargetCountMismatch`] if the original Gaussians count
-    /// does not match the target Gaussians count.
+    /// Returns [`Err`] if the original Gaussians count does not match the target Gaussians count.
     pub fn try_apply(
         &self,
         device: &wgpu::Device,
@@ -69,11 +72,11 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         gaussians: &GaussiansBuffer<G>,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
-    ) -> Result<(), Error> {
+    ) -> Result<(), GaussiansBufferUpdateError> {
         if self.original_gaussians.len() != gaussians.len() {
-            return Err(Error::OriginalTargetCountMismatch {
-                original: self.original_gaussians.len(),
-                target: gaussians.len(),
+            return Err(GaussiansBufferUpdateError::CountMismatch {
+                count: gaussians.len(),
+                expected_count: self.original_gaussians.len(),
             });
         }
 

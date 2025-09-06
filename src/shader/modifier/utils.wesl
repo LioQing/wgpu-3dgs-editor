@@ -3,6 +3,7 @@ import wgpu_3dgs_core::{
     model_transform::{ModelTransform, model_to_world, model_scale_rot_mat},
 };
 
+// Convert RGB color to HSV color.
 fn rgb_to_hsv(c: vec3<f32>) -> vec3<f32> {
     const k = vec4<f32>(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     let p = select(vec4<f32>(c.bg, k.wz), vec4<f32>(c.gb, k.xy), c.b < c.g);
@@ -13,6 +14,7 @@ fn rgb_to_hsv(c: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
+// Convert HSV color to RGB color.
 fn hsv_to_rgb(c: vec3<f32>) -> vec3<f32> {
     const k = vec4<f32>(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     let p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
@@ -127,6 +129,8 @@ fn apply_scale_rot_cov3d(
 }
 
 // A struct for all the basic color related modifiers.
+//
+// Corresponds to `BasicColorModifiersPod`.
 struct BasicColorModifiers {
     // If any value is negative, then it is used to override the RGB color,
     // otherwise it is used to apply HSV modifications.
@@ -167,11 +171,15 @@ fn apply_basic_color_modifiers(
     return vec4<f32>(rgb, a);
 }
 
+// The rotation and scale for per Gaussian transform.
+//
+// Corresponds to `RotScalePod`.
 struct RotScale {
     rot: vec4<f32>,
     scale: vec3<f32>,
 }
 
+// Convert a rotation scale to a scale rotation matrix.
 fn rot_scale_scale_rot_mat(rot_scale: RotScale) -> mat3x3<f32> {
     let rot = rot_scale.rot;
     let scale = rot_scale.scale;
@@ -216,7 +224,7 @@ fn rot_scale_scale_rot_mat(rot_scale: RotScale) -> mat3x3<f32> {
 //
 // Transform related parameters are applied using model and per Gaussian transforms.
 // The model transform is applied with ModelTransform struct,
-// and the per Gaussian transform is applied with a scale and rotation transform matrix.
+// and the per Gaussian transform is applied with RotScale struct.
 fn apply_basic_transform_modifiers(
     model_transform: ModelTransform,
     rot_scale: RotScale,

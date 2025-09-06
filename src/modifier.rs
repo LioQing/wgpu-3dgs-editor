@@ -8,6 +8,71 @@ use crate::{
 };
 
 /// A trait to apply modifier to Gaussians.
+///
+/// ## Overview
+///
+/// This trait simply defines a method to apply modifications to a set of Gaussians stored in a
+/// [`GaussiansBuffer`]. It makes it convenient for users to apply a sequence of modifications.
+///
+/// The trait is also blanket implemented for closures with the same signature, allowing users to
+/// easily create custom modifiers using closures.
+///
+/// [`Editor`](crate::Editor) also provides an `apply` method which takes a slice of
+/// [`Modifier`]s to apply them in sequence to the stored Gaussians.
+///
+/// ## Usage
+///
+/// There are many ways to use this but the recommended way is to implement this trait for a closure
+/// which dispatch a [`ComputeBundle`].
+///
+/// ```rust
+/// // Create the modifier compute bundle
+/// let my_modifier_bundle = ComputeBundleBuilder::new()
+///     .label("My Modifier")
+///     .bind_group_layouts([
+///         &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR, // Put your custom bind group layout here.
+///     ])
+///     .resolver({
+///         let mut resolver = wesl::PkgResolver::new();
+///         resolver.add_package(&core::shader::PACKAGE); // Required for using core buffer structs.
+///         resolver.add_package(&shader::PACKAGE); // Optionally add this for some utility functions.
+///         resolver
+///     })
+///     .main_shader("path::to::my::wesl::module".parse().unwrap())
+///     .entry_point("main")
+///     .wesl_compile_options(wesl::CompileOptions {
+///         features: G::wesl_features(), // Required for enabling the correct features for core struct.
+///         ..Default::default()
+///     })
+///     .build(
+///         &device,
+///         [
+///             [
+///                 gaussians_buffer.buffer().as_entire_binding(),
+///                 model_transform_buffer.buffer().as_entire_binding(),
+///                 gaussian_transform_buffer.buffer().as_entire_binding(),
+///             ],
+///             [ /* Your custom bind group resources */],
+///         ],
+///     )
+///     .map_err(|e| log::error!("{e}"))
+///     .expect("my modifier bundle");
+///
+/// // Create the modifier closure
+/// let my_modifier =
+///     move |device: &wgpu::Device,
+///             encoder: &mut wgpu::CommandEncoder,
+///             gaussians: &GaussiansBuffer<G>,
+///             model_transform: &ModelTransformBuffer,
+///             gaussian_transform: &GaussianTransformBuffer| {
+///         my_modifier_bundle.dispatch(encoder, gaussians.len() as u32);
+///     };
+///
+/// // Apply the modifier using an editor as an example
+/// let editor = Editor::new(&device, &gaussians);
+/// editor.apply(&device, &mut encoder, [&my_modifier as &dyn gs::Modifier<GaussianPod>]);
+/// ```
 pub trait Modifier<G: GaussianPod> {
     /// Apply the modifier to the Gaussians.
     fn apply(
@@ -51,6 +116,13 @@ impl<
 
 /// The bind group layout descriptor for the Gaussians buffer, with the
 /// model transform and Gaussian transform.
+///
+/// This bind group layout takes the following buffers:
+/// - [`GaussiansBuffer`]
+/// - [`ModelTransformBuffer`]
+/// - [`GaussianTransformBuffer`]
+///
+/// This bind group is usually at group 0 for [`Modifier`]s.
 pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
     wgpu::BindGroupLayoutDescriptor {
         label: Some("Modifier Gaussians Bind Group Layout"),
@@ -117,6 +189,12 @@ impl<B> BasicModifiersBundle<B> {
 impl BasicModifiersBundle {
     /// The bind group layout descriptor for the basic modifiers with a selection buffer.
     ///
+    /// Thie bind group layout takes the following buffers:
+    /// - [`TransformFlagsBuffer`]
+    /// - [`BasicColorModifiersBuffer`]
+    /// - [`RotScaleBuffer`]
+    /// - [`SelectionBuffer`]
+    ///
     /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION: wgpu::BindGroupLayoutDescriptor<
         'static,
@@ -171,6 +249,11 @@ impl BasicModifiersBundle {
     };
 
     /// The bind group layout descriptor for the basic modifiers without a selection buffer.
+    ///
+    /// This bind group layout takes the following buffers:
+    /// - [`TransformFlagsBuffer`]
+    /// - [`BasicColorModifiersBuffer`]
+    /// - [`RotScaleBuffer`]
     ///
     /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
@@ -267,7 +350,7 @@ impl BasicModifiersBundle {
     ) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
         ComputeBundleBuilder::new()
             .label("Basic Modifiers")
-            .bind_groups([
+            .bind_group_layouts([
                 &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 match has_selection {
                     true => &Self::BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION,
@@ -286,7 +369,7 @@ impl BasicModifiersBundle {
                     .expect("modifier::basic module path"),
             )
             .entry_point("main")
-            .compile_options(wesl::CompileOptions {
+            .wesl_compile_options(wesl::CompileOptions {
                 features: wesl::Features {
                     flags: G::features()
                         .into_iter()

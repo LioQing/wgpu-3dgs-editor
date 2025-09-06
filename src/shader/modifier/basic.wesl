@@ -1,5 +1,4 @@
 import wgpu_3dgs_core::{
-    compute_bundle,
     gaussian::{Gaussian, gaussian_unpack_color},
     gaussian_transform::GaussianTransform,
     model_transform::ModelTransform,
@@ -11,7 +10,7 @@ import package::modifier::{
         apply_basic_color_modifiers,
         apply_basic_transform_modifiers,
     },
-    modifier_consts,
+    consts,
 };
 
 @group(0) @binding(0)
@@ -36,12 +35,9 @@ var<uniform> rot_scale: RotScale;
 
 override workgroup_size: u32;
 
-@compute @workgroup_size(workgroup_size, 1, 1)
-fn main(
-    @builtin(workgroup_id) wid: vec3<u32>,
-    @builtin(local_invocation_id) lid: vec3<u32>,
-) {
-    let index = compute_bundle::index(wid, workgroup_size, lid);
+@compute @workgroup_size(workgroup_size)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let index = id.x;
 
     if index >= arrayLength(&gaussians) {
         return;
@@ -68,12 +64,12 @@ fn main(
         vec4<f32>(0.0, 0.0, 0.0, 1.0),
         vec3<f32>(1.0, 1.0, 1.0),
     );
-    if (transform_flags & modifier_consts::transform_flags_model) != 0 {
+    if (transform_flags & consts::transform_flags_model) != 0 {
         applied_model_transform = model_transform;
     }
 
     var applied_rot_scale = rot_scale;
-    if (transform_flags & modifier_consts::transform_flags_gaussian) != 0 {
+    if (transform_flags & consts::transform_flags_gaussian) != 0 {
         applied_rot_scale.scale *= gaussian_transform.size;
     }
 
