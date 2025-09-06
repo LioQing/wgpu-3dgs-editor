@@ -3,7 +3,10 @@ use wgpu::util::DeviceExt;
 
 use crate::core::{self, BufferWrapper, FixedSizeBufferWrapper};
 
-/// The selection storage buffer for storing selected Gaussians as a bitvec.
+/// The selection storage buffer.
+///
+/// This buffer holds the selection bitmask for Gaussians, where each bit represents whether
+/// a Gaussian is selected (1) or not (0).
 #[derive(Debug, Clone)]
 pub struct SelectionBuffer(wgpu::Buffer);
 
@@ -45,6 +48,11 @@ impl From<SelectionBuffer> for wgpu::Buffer {
 }
 
 /// The selection operation uniform buffer for storing selection operations.
+///
+/// This buffer holds a single u32 value representing the index of the selection operation to be
+/// performed, this includes both primitive operations and custom operations, the value is obtained
+/// from [`SelectionExpr::as_u32`](crate::SelectionExpr::as_u32), see its documentation for more
+/// details.
 #[derive(Debug, Clone)]
 pub struct SelectionOpBuffer(wgpu::Buffer);
 
@@ -79,7 +87,7 @@ impl From<SelectionOpBuffer> for wgpu::Buffer {
 }
 
 impl TryFrom<wgpu::Buffer> for SelectionOpBuffer {
-    type Error = core::Error;
+    type Error = core::FixedSizeBufferWrapperError;
 
     fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
         Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
@@ -91,6 +99,11 @@ impl FixedSizeBufferWrapper for SelectionOpBuffer {
 }
 
 /// An inverse transform uniform buffer for selection operations.
+///
+/// This buffer holds the inverse of the combined scale, rotation, and translation transform,
+/// which is used for [`SelectionBundle::create_sphere_bundle`](crate::SelectionBundle::create_sphere_bundle)
+/// and [`SelectionBundle::create_box_bundle`](crate::SelectionBundle::create_box_bundle), but
+/// can also be used for your custom selection operations.
 #[derive(Debug, Clone)]
 pub struct InvTransformBuffer(wgpu::Buffer);
 
@@ -138,7 +151,7 @@ impl From<InvTransformBuffer> for wgpu::Buffer {
 }
 
 impl TryFrom<wgpu::Buffer> for InvTransformBuffer {
-    type Error = core::Error;
+    type Error = core::FixedSizeBufferWrapperError;
 
     fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
         Self::verify_buffer_size(&buffer).map(|()| Self(buffer))

@@ -6,7 +6,10 @@ use crate::{
     },
 };
 
-/// A struct to handle custom selection bundles and [`BasicModifiersBundle`] together.
+/// A struct to handle custom selection and basic modifiers together.
+///
+/// This modifier holdes a [`SelectionBundle`] and a [`BasicModifiersBundle`] along with necessary
+/// buffers, and applies the selection followed by the basic modifiers in order.
 #[derive(Debug)]
 pub struct BasicSelectionModifier {
     pub selection_expr: SelectionExpr,
@@ -22,9 +25,10 @@ pub struct BasicSelectionModifier {
 impl BasicSelectionModifier {
     /// Create a new basic selection modifier.
     ///
-    /// `selection_bundles` are used for [`SelectionExpr::Unary`] or [`SelectionExpr::Binary`] and
-    /// must have the same bind group 0 as the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`]
-    /// (see [`SelectionBundle`] docs for more details).
+    /// `bundles` are used for [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], or
+    /// [`SelectionExpr::Selection`], they must have the same bind group 0 as the
+    /// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
+    /// [`SelectionBundle`] for more details.
     pub fn new<G: GaussianPod>(
         device: &wgpu::Device,
         gaussians_buffer: &GaussiansBuffer<G>,

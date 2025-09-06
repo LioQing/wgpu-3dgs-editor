@@ -11,13 +11,18 @@ use crate::{
 
 /// A selection expression tree.
 ///
-/// This can be used to carry out operations on selection buffers.
+/// ## Overview
+///
+/// This can be used to carry out operations on selection buffers, these operations are evaluated
+/// by [`SelectionBundle::evaluate`] in a recursive manner (depth-first).
+///
+/// ## Custom Operations
 ///
 /// [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], and [`SelectionExpr::Selection`] are
 /// custom operations that can be defined with additional [`ComputeBundle`]s, so they also
 /// carry a vector of bind groups that are used in the operation when dispatched/evaluated.
 /// These vectors should correspond to the selection bundle's bind groups starting at index 1,
-/// because index 0 is reserved for [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+/// because index 0 must be defined by [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
 #[derive(Debug, Default)]
 pub enum SelectionExpr {
     /// Apply an identity operation.
@@ -44,7 +49,7 @@ pub enum SelectionExpr {
     ),
     /// Create a selection.
     Selection(u32, Vec<wgpu::BindGroup>),
-    /// Use a selection buffer.
+    /// Directly use a selection buffer.
     Buffer(SelectionBuffer),
 }
 
@@ -105,8 +110,11 @@ impl SelectionExpr {
     /// Get the u32 associated with this expression's operation.
     ///
     /// The value returned is not the same as that returned by [`SelectionExpr::custom_op_index`],
-    /// but rather a value that can be used to identify the operation in a compute shader, custom
+    /// but rather a value that can be used to identify the operation by the compute shader, custom
     /// operation's index are offset by [`SelectionExpr::CUSTOM_OP_START`].
+    ///
+    /// You usually do not need to use this method, it is used internally for evaluation of the
+    /// compute shader.
     pub fn as_u32(&self) -> Option<u32> {
         match self {
             SelectionExpr::Union(_, _) => Some(0),
@@ -168,6 +176,8 @@ impl SelectionExpr {
     }
 
     /// Get the custom operation index.
+    ///
+    /// This is the index of the custom operation in [`SelectionBundle::bundles`] vector.
     pub fn custom_op_index(&self) -> Option<u32> {
         match self {
             SelectionExpr::Unary(op, _, _)
@@ -200,9 +210,84 @@ impl SelectionExpr {
 
 /// A collection of specialized [`ComputeBundle`] for selection operations.
 ///
-/// All [`ComputeBundle`]s supplied to this bundle as a [`SelectionExpr::Unary`] or
-/// [`SelectionExpr::Binary`] must have the same bind group 0 as the
-/// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+/// ## Custom Operations
+///
+/// All [`ComputeBundle`]s supplied to this bundle as a [`SelectionExpr::Unary`],
+/// [`SelectionExpr::Binary`], or [`SelectionExpr::Selection`] custom operation must have the same
+/// bind group 0 as the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`]. They must also
+/// not have the bind group itself, as it will be supplied automatically during evaluation.
+///
+/// It is recommended to use [`ComputeBundleBuilder`] to create the custom operation bundles,
+/// and build them using [`ComputeBundleBuilder::build_without_bind_groups`].
+///
+/// ```rust
+/// // Create the selection custom operation compute bundle
+/// let my_selection_custom_op_bundle = ComputeBundleBuilder::new()
+///     .label("My Selection")
+///     .bind_group_layouts([
+///         &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR, // Put your custom bind group layout here.
+///     ])
+///     .resolver({
+///         let mut resolver = wesl::PkgResolver::new();
+///         resolver.add_package(&core::shader::PACKAGE); // Required for using core buffer structs.
+///         resolver.add_package(&shader::PACKAGE); // Optionally add this for some utility functions.
+///         resolver
+///     })
+///     .main_shader("path::to::my::wesl::module".parse().unwrap())
+///     .entry_point("main")
+///     .wesl_compile_options(wesl::CompileOptions {
+///         features: G::wesl_features(), // Required for enabling the correct features for core structs.
+///         ..Default::default()
+///     })
+///     .build_without_bind_groups(&device)
+///     .map_err(|e| log::error!("{e}"))
+///     .expect("my selection custom op bundle");
+///
+/// // Create the selection bundle
+/// let selection_bundle = SelectionBundle::new::<GaussianPod>(
+///     &device,
+///     vec![my_selection_custom_op_bundle],
+/// );
+///
+/// // Create the bind group for your custom operation
+/// selection_bundle.bundles[0]
+///     .create_bind_group(
+///         &device,
+///         1, // Index 0 is the Gaussians buffer, so remember to start from 1 for your bind groups
+///         [my_selection_custom_op_buffer.buffer().as_entire_binding()], // Your custom bind group resources
+///     )
+///     .unwrap()
+///
+/// // Create the selection expression
+/// let selection_expr = gs::SelectionExpr::selection(
+///     0, // The bundle index for your custom operation in the selection bundle
+///     vec![my_selection_custom_op_bind_group],
+/// )
+/// .union( // Combine with other selection expressions using different functions
+///     gs::SelectionExpr::Buffer(my_existing_selection_buffer) // An existing selection buffer for example
+/// );
+///
+/// // Create a selection buffer for the result
+/// let dest_selection_buffer = SelectionBuffer::new(&device, gaussians_buffer.len() as u32);
+///
+/// // Evaluate the selection expression
+/// selection_bundle.evaluate(
+///     &device,
+///     &mut encoder,
+///     &selection_expr,
+///     &dest_selection_buffer,
+///     &model_transform,
+///     &gaussian_transform,
+///     &gaussians_buffer,
+/// );
+/// ```
+///
+/// ## Shader Format
+///
+/// You may copy and paste the following shader bindings for
+/// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`] into your custom selection operation
+/// shader to ensure that the bindings are correct, then add your own bindings after that.
 ///
 /// ```wgsl
 /// import wgpu_3dgs_core::{
@@ -228,17 +313,51 @@ impl SelectionExpr {
 ///
 /// @group(0) @binding(5)
 /// var<storage, read> gaussians: array<Gaussian>;
+///
+/// // Your custom bindings here...
+///
+/// override workgroup_size: u32;
+///
+/// @compute @workgroup_size(workgroup_size)
+/// fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+///     let index = id.x;
+///
+///     if index >= arrayLength(&gaussians) {
+///         return;
+///     }
+///
+///     let gaussian = gaussians[index];
+///
+///    // Your custom selection operation code here...
+///
+///     let word_index = index / 32u;
+///     let bit_index = index % 32u;
+///     let bit_mask = 1u << bit_index;
+///     if /* Condition for selecting the Gaussian */ {
+///         atomicOr(&dest[word_index], bit_mask);
+///     } else {
+///         atomicAnd(&dest[word_index], ~bit_mask);
+///     }
+/// }
 /// ```
 #[derive(Debug)]
 pub struct SelectionBundle {
     /// The compute bundle for primitive selection operations.
     primitive_bundle: ComputeBundle<()>,
-    /// The compute bundles for selection operations.
+    /// The compute bundles for selection custom operations.
     pub bundles: Vec<ComputeBundle<()>>,
 }
 
 impl SelectionBundle {
     /// The Gaussians bind group layout descriptors.
+    ///
+    /// This bind group layout takes the following buffers:
+    /// - [`SelectionOpBuffer`]
+    /// - Source [`SelectionBuffer`]
+    /// - Destination [`SelectionBuffer`]
+    /// - [`ModelTransformBuffer`]
+    /// - [`GaussianTransformBuffer`]
+    /// - [`GaussiansBuffer`]
     pub const GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Selection Gaussians Bind Group Layout"),
@@ -298,7 +417,7 @@ impl SelectionBundle {
                     },
                     count: None,
                 },
-                // Gaussian buffer
+                // Gaussians buffer
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -314,9 +433,10 @@ impl SelectionBundle {
 
     /// Create a new selection bundle.
     ///
-    /// `bundles` are used for [`SelectionExpr::Unary`] or [`SelectionExpr::Binary`] and
-    /// must have the same bind group 0 as the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`]
-    /// (see [`SelectionBundle`] docs for more details).
+    /// `bundles` are used for [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], or
+    /// [`SelectionExpr::Selection`] as custom operations, they must have the same bind group 0 as
+    /// the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
+    /// [`SelectionBundle`] for more details.
     pub fn new<'a, G: GaussianPod>(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
         let primitive_bundle = Self::create_primitive_bundle::<G>(device);
 
@@ -430,11 +550,16 @@ impl SelectionBundle {
         }
     }
 
-    /// Create the primitive selection operation [`ComputeBundle`].
+    /// Create the selection primitive operation [`ComputeBundle`].
+    ///
+    /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    ///
+    /// You usually do not need to use this method, it is used internally for creating the
+    /// primitive operation bundle for evaluation.
     pub fn create_primitive_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
         ComputeBundleBuilder::new()
             .label("Selection Primitive Operations")
-            .bind_group(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
+            .bind_group_layout(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
             .resolver({
                 let mut resolver = wesl::PkgResolver::new();
                 resolver.add_package(&core::shader::PACKAGE);
@@ -447,7 +572,7 @@ impl SelectionBundle {
                     .expect("selection::primitive_ops module path"),
             )
             .entry_point("main")
-            .compile_options(wesl::CompileOptions {
+            .wesl_compile_options(wesl::CompileOptions {
                 features: G::wesl_features(),
                 ..Default::default()
             })
@@ -457,6 +582,9 @@ impl SelectionBundle {
     }
 
     /// The sphere selection bind group layout descriptor.
+    ///
+    /// This bind group layout takes the following buffers:
+    /// - [`InvTransformBuffer`](crate::InvTransformBuffer)
     pub const SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Sphere Selection Bind Group Layout"),
@@ -475,7 +603,7 @@ impl SelectionBundle {
             ],
         };
 
-    /// Create a sphere selection operation.
+    /// Create a sphere selection custom operation.
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - Bind group 1 is [`SelectionBundle::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR`].
@@ -486,7 +614,7 @@ impl SelectionBundle {
 
         ComputeBundleBuilder::new()
             .label("Sphere Selection")
-            .bind_groups([
+            .bind_group_layouts([
                 &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &Self::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
@@ -496,7 +624,7 @@ impl SelectionBundle {
                     .expect("selection::sphere module path"),
             )
             .entry_point("main")
-            .compile_options(wesl::CompileOptions {
+            .wesl_compile_options(wesl::CompileOptions {
                 features: G::wesl_features(),
                 ..Default::default()
             })
@@ -507,6 +635,9 @@ impl SelectionBundle {
     }
 
     /// The box selection bind group layout descriptor.
+    ///
+    /// This bind group layout takes the following buffers:
+    /// - [`InvTransformBuffer`](crate::InvTransformBuffer)
     pub const BOX_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Box Selection Bind Group Layout"),
@@ -525,7 +656,7 @@ impl SelectionBundle {
             ],
         };
 
-    /// Create a box selection operation.
+    /// Create a box selection custom operation.
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - Bind group 1 is [`SelectionBundle::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
@@ -536,7 +667,7 @@ impl SelectionBundle {
 
         ComputeBundleBuilder::new()
             .label("Box Selection")
-            .bind_groups([
+            .bind_group_layouts([
                 &Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 &Self::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR,
             ])
@@ -546,7 +677,7 @@ impl SelectionBundle {
                     .expect("selection::box module path"),
             )
             .entry_point("main")
-            .compile_options(wesl::CompileOptions {
+            .wesl_compile_options(wesl::CompileOptions {
                 features: G::wesl_features(),
                 ..Default::default()
             })

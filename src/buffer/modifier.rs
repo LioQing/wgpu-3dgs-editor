@@ -4,6 +4,9 @@ use wgpu::util::DeviceExt;
 use crate::core::{self, BufferWrapper, FixedSizeBufferWrapper};
 
 /// The basic color modifiers buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
+///
+/// This buffer holds the data for basic color modifications, including RGB override or
+/// HSV modifications, alpha, contrast, exposure, and gamma adjustments.
 #[derive(Debug)]
 pub struct BasicColorModifiersBuffer(wgpu::Buffer);
 
@@ -70,7 +73,7 @@ impl From<BasicColorModifiersBuffer> for wgpu::Buffer {
 }
 
 impl TryFrom<wgpu::Buffer> for BasicColorModifiersBuffer {
-    type Error = core::Error;
+    type Error = core::FixedSizeBufferWrapperError;
 
     fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
         Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
@@ -82,10 +85,18 @@ impl FixedSizeBufferWrapper for BasicColorModifiersBuffer {
 }
 
 /// The POD representation of the basic color modifiers buffer.
+///
+/// ## RGB Override or HSV Modifications
+///
+/// If any value of `rgb_or_hsv` is negative, then it is used to override the RGB color,
+/// otherwise it is used to apply HSV modifications.
+///
+/// For example, to override the color to red, use `rgb_or_hsv = Vec3::new(-1.0, 0.0, 0.0)`,
+/// to apply a hue shift of 180 degrees, use `rgb_or_hsv = Vec3::new(0.5, 1.0, 1.0)`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct BasicColorModifiersPod {
-    /// If any value is negative, then it is used to override the RGB color,
+    /// If any value of this vector is negative, then it is used to override the RGB color,
     /// otherwise it is used to apply HSV modifications.
     pub rgb_or_hsv: Vec3,
     pub alpha: f32,
@@ -182,7 +193,7 @@ impl From<TransformFlagsBuffer> for wgpu::Buffer {
 }
 
 impl TryFrom<wgpu::Buffer> for TransformFlagsBuffer {
-    type Error = core::Error;
+    type Error = core::FixedSizeBufferWrapperError;
 
     fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
         Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
@@ -206,6 +217,8 @@ bitflags::bitflags! {
 }
 
 /// The scale rotation buffer for the [`BasicModifiersBundle`](crate::BasicModifiersBundle).
+///
+/// This buffer holds the per Gaussian rotation and scale modification data.
 #[derive(Debug)]
 pub struct RotScaleBuffer(wgpu::Buffer);
 
@@ -245,7 +258,7 @@ impl From<RotScaleBuffer> for wgpu::Buffer {
 }
 
 impl TryFrom<wgpu::Buffer> for RotScaleBuffer {
-    type Error = core::Error;
+    type Error = core::FixedSizeBufferWrapperError;
 
     fn try_from(buffer: wgpu::Buffer) -> Result<Self, Self::Error> {
         Self::verify_buffer_size(&buffer).map(|()| Self(buffer))
