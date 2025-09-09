@@ -15,10 +15,20 @@ This library provides a set of tools to create and manipulate 3D Gaussian Splatt
     - Masked modifications: apply changes only to selected Gaussians from selection buffers.
     - Custom modifiers: define your own modification logic using WGSL/WESL shaders.
     - Built-in basic modifiers: color adjustments (RGB override or HSV modifications), alpha, contrast, exposure, gamma, and transformations (scale and rotation).
+- Shaders
+    - WGSL shaders packaged with WESL, you can extend or replace them.
 
 ## Usage
 
 This crate provides some basic selection and modifier, but you may also define your own custom selection and modifier using WGSL/WESL shaders.
+
+You may read the documentation of the following traits and structs for more details:
+- [`Editor`]: The struct that manages the necessary buffers and applies the selection and modification.
+- [`Modifier`]: The trait for modification operations, may be used to define custom modifiers.
+    - [`BasicModifiersBundle`]: A built-in modifier bundle that enables some basic color and transformation modifications.
+- [`SelectionBundle`]: A struct can evaluate selection for each Gaussian, may also call custom selection operations.
+    - [`BasicSelectionModifier`]: A built-in selection modifier that enables box and sphere selections, and manages the necessary buffers.
+- [`NonDestructiveModifier`]: A struct that applies modifications without changing the original Gaussians, it achieves this by storing an original copy of the Gaussians.
 
 ### Basic Editor
 
@@ -37,7 +47,7 @@ let gaussians = gs::core::Gaussians::read_ply(&mut reader).unwrap();
 // Create an editor that creates the necessary buffers, you may also create the buffers manually
 let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
 
-// Create a basic selection modifier with a box selection bundle
+// Create a basic selection modifier with a box and a sphere selection bundle
 let mut basic_selection_modifier = gs::BasicSelectionModifier::new::<GaussianPod>(
     &device,
     &editor.gaussians_buffer,

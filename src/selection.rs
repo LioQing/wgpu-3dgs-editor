@@ -293,7 +293,7 @@ impl SelectionExpr {
 /// import wgpu_3dgs_core::{
 ///     gaussian::Gaussian,
 ///     gaussian_transform::GaussianTransform,
-///     model_transform::ModelTransform,
+///     model_transform::{model_to_world, ModelTransform},
 /// };
 ///
 /// @group(0) @binding(0)
@@ -328,7 +328,9 @@ impl SelectionExpr {
 ///
 ///     let gaussian = gaussians[index];
 ///
-///    // Your custom selection operation code here...
+///     let world_pos = model_to_world(model_transform, gaussian.position);
+///
+///     // Your custom selection operation code here...
 ///
 ///     let word_index = index / 32u;
 ///     let bit_index = index % 32u;

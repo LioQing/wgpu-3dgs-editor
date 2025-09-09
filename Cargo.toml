@@ -10,6 +10,7 @@ include = [
     "README.md",
     "LICENSE-MIT",
     "LICENSE-APACHE",
+    "CHANGELOG.md",
     "Cargo.toml",
     "Cargo.lock",
     "src/**/*",
@@ -31,6 +32,11 @@ doc-scrape-examples = true
 [[example]]
 name = "modify-selection"
 path = "examples/modify_selection.rs"
+doc-scrape-examples = true
+
+[[example]]
+name = "custom-modify-selection"
+path = "examples/custom_modify_selection.rs"
 doc-scrape-examples = true
 
 [dependencies]
