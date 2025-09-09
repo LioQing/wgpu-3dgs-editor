@@ -30,16 +30,16 @@ use crate::{
 /// let my_modifier_bundle = ComputeBundleBuilder::new()
 ///     .label("My Modifier")
 ///     .bind_group_layouts([
-///         &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+///         &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, // For accessing Gaussians and transforms
 ///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR, // Put your custom bind group layout here.
 ///     ])
 ///     .resolver({
-///         let mut resolver = wesl::PkgResolver::new();
+///         let mut resolver = wesl::StandardResolver::new("path/to/my/folder/containing/wesl");
 ///         resolver.add_package(&core::shader::PACKAGE); // Required for using core buffer structs.
 ///         resolver.add_package(&shader::PACKAGE); // Optionally add this for some utility functions.
 ///         resolver
 ///     })
-///     .main_shader("path::to::my::wesl::module".parse().unwrap())
+///     .main_shader("package::my_wesl_filename".parse().unwrap())
 ///     .entry_point("main")
 ///     .wesl_compile_options(wesl::CompileOptions {
 ///         features: G::wesl_features(), // Required for enabling the correct features for core struct.
@@ -48,31 +48,84 @@ use crate::{
 ///     .build(
 ///         &device,
 ///         [
-///             [
+///             vec![
 ///                 gaussians_buffer.buffer().as_entire_binding(),
 ///                 model_transform_buffer.buffer().as_entire_binding(),
 ///                 gaussian_transform_buffer.buffer().as_entire_binding(),
 ///             ],
-///             [ /* Your custom bind group resources */],
+///             vec![ /* Your custom bind group resources */ ],
 ///         ],
 ///     )
 ///     .map_err(|e| log::error!("{e}"))
 ///     .expect("my modifier bundle");
 ///
 /// // Create the modifier closure
-/// let my_modifier =
-///     move |device: &wgpu::Device,
-///             encoder: &mut wgpu::CommandEncoder,
-///             gaussians: &GaussiansBuffer<G>,
-///             model_transform: &ModelTransformBuffer,
-///             gaussian_transform: &GaussianTransformBuffer| {
-///         my_modifier_bundle.dispatch(encoder, gaussians.len() as u32);
-///     };
+/// let my_modifier = |device: &wgpu::Device,
+///                    encoder: &mut wgpu::CommandEncoder,
+///                    gaussians: &GaussiansBuffer<G>,
+///                    model_transform: &ModelTransformBuffer,
+///                    gaussian_transform: &GaussianTransformBuffer| {
+///     my_modifier_bundle.dispatch(encoder, gaussians.len() as u32);
+/// };
 ///
 /// // Apply the modifier using an editor as an example
 /// let editor = Editor::new(&device, &gaussians);
 /// editor.apply(&device, &mut encoder, [&my_modifier as &dyn gs::Modifier<GaussianPod>]);
 /// ```
+///
+/// ## Shader Format
+///
+/// You may copy and paste the following shader bindings for
+/// [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`] into your custom selection operation
+/// shader to ensure that the bindings are correct, then add your own bindings after that.
+///
+/// ```wgsl
+/// import wgpu_3dgs_core::{
+///     gaussian::Gaussian,
+///     gaussian_transform::GaussianTransform,
+///     model_transform::ModelTransform,
+/// };
+///
+/// @group(0) @binding(0)
+/// var<storage, read_write> gaussians: array<Gaussian>;
+///
+/// @group(0) @binding(1)
+/// var<uniform> model_transform: ModelTransform;
+///
+/// @group(0) @binding(2)
+/// var<uniform> gaussian_transform: GaussianTransform;
+///
+/// // Your custom bindings here...
+/// //
+/// // You may also apply modifier to selected gaussians only by adding:
+/// // @group(1) @binding(N)
+/// // var<storage, read> selection: array<u32>;
+///
+/// override workgroup_size: u32;
+///
+/// @compute @workgroup_size(workgroup_size)
+/// fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+///     let index = id.x;
+///
+///     if index >= arrayLength(&gaussians) {
+///         return;
+///     }
+///     
+///     @if(/* using selection buffer */) {
+///         let word_index = index / 32u;
+///         let bit_index = index % 32u;
+///         let bit_mask = 1u << bit_index;
+///         if (selection[word_index] & bit_mask) == 0 {
+///             return;
+///         }
+///     }
+///
+///     var gaussian = gaussians[index];
+///
+///     // Your custom modifier operation code here...
+///
+///     gaussians[index] = gaussian;
+/// }
 pub trait Modifier<G: GaussianPod> {
     /// Apply the modifier to the Gaussians.
     fn apply(

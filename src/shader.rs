@@ -35,10 +35,10 @@ pub mod selection {
         ],
     };
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/selection/consts.wesl"), "\n```")]
     pub mod consts {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/selection/consts.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "consts",
             source: include_str!("shader/selection/consts.wesl"),
@@ -46,10 +46,10 @@ pub mod selection {
         };
     }
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/selection/primitive_ops.wesl"), "\n```")]
     pub mod primitive_ops {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/selection/primitive_ops.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "primitive_ops",
             source: include_str!("shader/selection/primitive_ops.wesl"),
@@ -57,10 +57,10 @@ pub mod selection {
         };
     }
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/selection/sphere.wesl"), "\n```")]
     pub mod sphere {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/selection/sphere.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "sphere",
             source: include_str!("shader/selection/sphere.wesl"),
@@ -68,10 +68,10 @@ pub mod selection {
         };
     }
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/selection/box.wesl"), "\n```")]
     pub mod r#box {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/selection/box.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "box",
             source: include_str!("shader/selection/box.wesl"),
@@ -90,10 +90,10 @@ pub mod modifier {
         submodules: &[&modifier_consts::MODULE, &utils::MODULE, &basic::MODULE],
     };
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/modifier/consts.wesl"), "\n```")]
     pub mod modifier_consts {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/modifier/consts.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "consts",
             source: include_str!("shader/modifier/consts.wesl"),
@@ -101,10 +101,10 @@ pub mod modifier {
         };
     }
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/modifier/utils.wesl"), "\n```")]
     pub mod utils {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/modifier/utils.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "utils",
             source: include_str!("shader/modifier/utils.wesl"),
@@ -112,10 +112,10 @@ pub mod modifier {
         };
     }
 
+    #[doc = concat!("```wgsl\n", include_str!("shader/modifier/basic.wesl"), "\n```")]
     pub mod basic {
         use super::PkgModule;
 
-        #[doc = concat!("```wgsl\n", include_str!("shader/modifier/basic.wesl"), "\n```")]
         pub const MODULE: PkgModule = PkgModule {
             name: "basic",
             source: include_str!("shader/modifier/basic.wesl"),
