@@ -245,13 +245,13 @@ impl SelectionExpr {
 ///     .expect("my selection custom op bundle");
 ///
 /// // Create the selection bundle
-/// let selection_bundle = SelectionBundle::new::<GaussianPod>(
+/// let selection_bundle = SelectionBundle::<GaussianPod>::new(
 ///     &device,
 ///     vec![my_selection_custom_op_bundle],
 /// );
 ///
 /// // Create the bind group for your custom operation
-/// selection_bundle.bundles[0]
+/// let my_selection_custom_op_bind_group = selection_bundle.bundles[0]
 ///     .create_bind_group(
 ///         &device,
 ///         1, // Index 0 is the Gaussians buffer, so remember to start from 1 for your bind groups
@@ -343,14 +343,16 @@ impl SelectionExpr {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct SelectionBundle {
+pub struct SelectionBundle<G: GaussianPod> {
     /// The compute bundle for primitive selection operations.
     primitive_bundle: ComputeBundle<()>,
     /// The compute bundles for selection custom operations.
     pub bundles: Vec<ComputeBundle<()>>,
+    /// The Gaussian pod marker.
+    gaussian_pod_marker: std::marker::PhantomData<G>,
 }
 
-impl SelectionBundle {
+impl<G: GaussianPod> SelectionBundle<G> {
     /// The Gaussians bind group layout descriptors.
     ///
     /// This bind group layout takes the following buffers:
@@ -439,12 +441,13 @@ impl SelectionBundle {
     /// [`SelectionExpr::Selection`] as custom operations, they must have the same bind group 0 as
     /// the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
     /// [`SelectionBundle`] for more details.
-    pub fn new<'a, G: GaussianPod>(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
-        let primitive_bundle = Self::create_primitive_bundle::<G>(device);
+    pub fn new<'a>(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
+        let primitive_bundle = Self::create_primitive_bundle(device);
 
         Self {
             primitive_bundle,
             bundles,
+            gaussian_pod_marker: std::marker::PhantomData,
         }
     }
 
@@ -454,7 +457,7 @@ impl SelectionBundle {
     }
 
     /// Evaluate and apply the selection expression.
-    pub fn evaluate<G: GaussianPod>(
+    pub fn evaluate(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
@@ -558,10 +561,10 @@ impl SelectionBundle {
     ///
     /// You usually do not need to use this method, it is used internally for creating the
     /// primitive operation bundle for evaluation.
-    pub fn create_primitive_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+    pub fn create_primitive_bundle(device: &wgpu::Device) -> ComputeBundle<()> {
         ComputeBundleBuilder::new()
             .label("Selection Primitive Operations")
-            .bind_group_layout(&SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
+            .bind_group_layout(&Self::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR)
             .resolver({
                 let mut resolver = wesl::PkgResolver::new();
                 resolver.add_package(&core::shader::PACKAGE);
@@ -609,7 +612,7 @@ impl SelectionBundle {
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - Bind group 1 is [`SelectionBundle::SPHERE_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn create_sphere_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+    pub fn create_sphere_bundle(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
         resolver.add_package(&core::shader::PACKAGE);
         resolver.add_package(&shader::PACKAGE);
@@ -662,7 +665,7 @@ impl SelectionBundle {
     ///
     /// - Bind group 0 is [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - Bind group 1 is [`SelectionBundle::BOX_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn create_box_bundle<G: GaussianPod>(device: &wgpu::Device) -> ComputeBundle<()> {
+    pub fn create_box_bundle(device: &wgpu::Device) -> ComputeBundle<()> {
         let mut resolver = wesl::PkgResolver::new();
         resolver.add_package(&core::shader::PACKAGE);
         resolver.add_package(&shader::PACKAGE);

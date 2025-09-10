@@ -94,8 +94,8 @@ async fn main() {
     let rot = Quat::from_slice(&args.rot);
     let scale = Vec3::from_slice(&args.scale);
     let shape = match args.shape {
-        Shape::Sphere => gs::SelectionBundle::create_sphere_bundle::<GaussianPod>,
-        Shape::Box => gs::SelectionBundle::create_box_bundle::<GaussianPod>,
+        Shape::Sphere => gs::SelectionBundle::<GaussianPod>::create_sphere_bundle,
+        Shape::Box => gs::SelectionBundle::<GaussianPod>::create_box_bundle,
     };
     let repeat = args.repeat;
     let offset = Vec3::from_slice(&args.offset);
@@ -140,7 +140,7 @@ async fn main() {
     let shape_selection = shape(&device);
 
     log::debug!("Creating selection bundle");
-    let selection_bundle = gs::SelectionBundle::new::<GaussianPod>(&device, vec![shape_selection]);
+    let selection_bundle = gs::SelectionBundle::<GaussianPod>::new(&device, vec![shape_selection]);
 
     log::debug!("Creating shape selection buffers");
     let shape_selection_buffers = (0..repeat)

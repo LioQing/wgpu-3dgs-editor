@@ -6,6 +6,12 @@
 
 ## Overview
 
+> [!WARNING]
+>
+> This library is under active development, breaking API changes between versions may occur frequently.
+>
+> Use at your own risk.
+
 This library provides a set of tools to create and manipulate 3D Gaussian Splatting models. It includes:
 - Selecting Gaussians using selection operations and expressions.
     - Primitive operations: union, intersection, difference, symmetric difference, and inversion.
@@ -14,7 +20,7 @@ This library provides a set of tools to create and manipulate 3D Gaussian Splatt
 - Modifying Gaussian attributes.
     - Masked modifications: apply changes only to selected Gaussians from selection buffers.
     - Custom modifiers: define your own modification logic using WGSL/WESL shaders.
-    - Built-in basic modifiers: color adjustments (RGB override or HSV modifications), alpha, contrast, exposure, gamma, and transformations (scale and rotation).
+    - Built-in basic modifier: color adjustments (RGB override or HSV modifications), alpha, contrast, exposure, gamma, and transformations (scale and rotation).
 - Shaders
     - WGSL shaders packaged with WESL, you can extend or replace them.
 
@@ -25,14 +31,14 @@ This crate provides some basic selection and modifier, but you may also define y
 You may read the documentation of the following traits and structs for more details:
 - [`Editor`]: The struct that manages the necessary buffers and applies the selection and modification.
 - [`Modifier`]: The trait for modification operations, may be used to define custom modifiers.
-    - [`BasicModifiersBundle`]: A built-in modifier bundle that enables some basic color and transformation modifications.
+- [`BasicModifier`]: A built-in modifier that enables some basic color and transformation modifications.
 - [`SelectionBundle`]: A struct can evaluate selection for each Gaussian, may also call custom selection operations.
-    - [`BasicSelectionModifier`]: A built-in selection modifier that enables box and sphere selections, and manages the necessary buffers.
+- [`SelectionModifier`]: A struct that applies selection and then modification, may be used to define custom selection modifiers.
 - [`NonDestructiveModifier`]: A struct that applies modifications without changing the original Gaussians, it achieves this by storing an original copy of the Gaussians.
 
 ### Basic Editor
 
-You can use [`Editor`] and [`BasicSelectionModifier`] to manage the selection and modification of Gaussians with the built-in basic operations. Here's a simple example:
+You can use [`Editor`] and [`SelectionModifier::new_with_basic_modifier`] to manage the selection and modification of Gaussians with the built-in basic operations. Here's a simple example:
 
 ```rust
 use wgpu_3dgs_editor as gs;
@@ -48,7 +54,7 @@ let gaussians = gs::core::Gaussians::read_ply(&mut reader).unwrap();
 let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
 
 // Create a basic selection modifier with a box and a sphere selection bundle
-let mut basic_selection_modifier = gs::BasicSelectionModifier::new::<GaussianPod>(
+let mut basic_selection_modifier = gs::SelectionModifier::<GaussianPod, _>::new_with_basic_modifier(
     &device,
     &editor.gaussians_buffer,
     &editor.model_transform_buffer,
@@ -63,7 +69,7 @@ let mut basic_selection_modifier = gs::BasicSelectionModifier::new::<GaussianPod
 let box_selection_buffer = gs::InvTransformBuffer::new(&device);
 box_selection_buffer.update_with_scale_rot_pos(&queue, box_scale, box_rot, box_pos);
 
-let box_selection_bind_group = basic_selection_modifier.bundles[0]
+let box_selection_bind_group = basic_selection_modifier.selection.bundles[0]
     .create_bind_group(
         &device,
         1, // The built-in box selection bundle uses index 1 for the inv transform buffer,
@@ -76,7 +82,7 @@ let box_selection_bind_group = basic_selection_modifier.bundles[0]
 let sphere_selection_buffer = gs::InvTransformBuffer::new(&device);
 sphere_selection_buffer.update_with_scale_rot_pos(&queue, sphere_scale, sphere_rot, sphere_pos);
 
-let sphere_selection_bind_group = basic_selection_modifier.bundles[1]
+let sphere_selection_bind_group = basic_selection_modifier.selection.bundles[1]
     .create_bind_group(
         &device,
         1, // The built-in sphere selection bundle uses index 1 for the inv transform buffer,
@@ -98,6 +104,7 @@ basic_selection_modifier.selection_expr = gs::SelectionExpr::selection(
 
 // Set the modification parameters, here we override the color
 basic_selection_modifier
+    .modifier
     .basic_color_modifiers_buffer
     .update_with_override_rgb(
         &queue,
