@@ -31,7 +31,8 @@ var<uniform> color_modifiers: BasicColorModifiers;
 @group(1) @binding(2)
 var<uniform> rot_scale: RotScale;
 
-@group(1) @binding(3) var<storage, read> selection: array<u32>;
+@if(selection_buffer) @group(1) @binding(3)
+var<storage, read> selection: array<u32>;
 
 override workgroup_size: u32;
 

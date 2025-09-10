@@ -15,7 +15,7 @@ use crate::{
 /// [`GaussiansBuffer`]. It makes it convenient for users to apply a sequence of modifications.
 ///
 /// The trait is also blanket implemented for closures with the same signature, allowing users to
-/// easily create custom modifiers using closures.
+/// easily create modifier closures instead of having to define a modifier struct.
 ///
 /// [`Editor`](crate::Editor) also provides an `apply` method which takes a slice of
 /// [`Modifier`]s to apply them in sequence to the stored Gaussians.
@@ -216,18 +216,19 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
         ],
     };
 
-/// A specialized [`ComputeBundle`] for some built-in basic modifiers.
+/// A specialized [`ComputeBundle`] for some built-in basic modifier.
 ///
 /// This bundle includes the modifiers for [`BasicColorModifiersBuffer`],
 /// [`RotScaleBuffer`], and [`TransformFlagsBuffer`] (which provides flags for applying
 /// [`core::ModelTransformBuffer`] and [`core::GaussianTransformBuffer`]).
 #[derive(Debug)]
-pub struct BasicModifiersBundle<B = wgpu::BindGroup> {
+pub struct BasicModifierBundle<G: GaussianPod, B = wgpu::BindGroup> {
     bundle: ComputeBundle<B>,
     has_selection: bool,
+    gaussian_pod_marker: std::marker::PhantomData<G>,
 }
 
-impl<B> BasicModifiersBundle<B> {
+impl<G: GaussianPod, B> BasicModifierBundle<G, B> {
     /// Gets the inner [`ComputeBundle`].
     pub fn bundle(&self) -> &ComputeBundle<B> {
         &self.bundle
@@ -239,8 +240,8 @@ impl<B> BasicModifiersBundle<B> {
     }
 }
 
-impl BasicModifiersBundle {
-    /// The bind group layout descriptor for the basic modifiers with a selection buffer.
+impl<G: GaussianPod> BasicModifierBundle<G> {
+    /// The bind group layout descriptor for the basic modifier with a selection buffer.
     ///
     /// Thie bind group layout takes the following buffers:
     /// - [`TransformFlagsBuffer`]
@@ -252,7 +253,7 @@ impl BasicModifiersBundle {
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION: wgpu::BindGroupLayoutDescriptor<
         'static,
     > = wgpu::BindGroupLayoutDescriptor {
-        label: Some("Basic Modifiers Bind Group Layout"),
+        label: Some("Basic Modifier Bind Group Layout"),
         entries: &[
             // Transform flags uniform buffer
             wgpu::BindGroupLayoutEntry {
@@ -301,7 +302,7 @@ impl BasicModifiersBundle {
         ],
     };
 
-    /// The bind group layout descriptor for the basic modifiers without a selection buffer.
+    /// The bind group layout descriptor for the basic modifier without a selection buffer.
     ///
     /// This bind group layout takes the following buffers:
     /// - [`TransformFlagsBuffer`]
@@ -311,15 +312,15 @@ impl BasicModifiersBundle {
     /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
-            label: Some("Basic Modifiers Bind Group Layout"),
+            label: Some("Basic Modifier Bind Group Layout"),
             entries: &Self::BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION
                 .entries
                 .split_at(3)
                 .0,
         };
 
-    /// Creates a new [`BasicModifiersBundle`] bundle.
-    pub fn new<G: GaussianPod>(
+    /// Creates a new [`BasicModifierBundle`] bundle.
+    pub fn new(
         device: &wgpu::Device,
         gaussians_buffer: &GaussiansBuffer<G>,
         model_transform_buffer: &ModelTransformBuffer,
@@ -328,7 +329,7 @@ impl BasicModifiersBundle {
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         rot_scale_buffer: &RotScaleBuffer,
     ) -> Self {
-        Self::create_bundle_builder::<G>(false)
+        Self::create_bundle_builder(false)
             .build(
                 &device,
                 [
@@ -347,13 +348,14 @@ impl BasicModifiersBundle {
             .map(|bundle| Self {
                 bundle,
                 has_selection: false,
+                gaussian_pod_marker: std::marker::PhantomData,
             })
             .map_err(|e| log::error!("{e}"))
-            .expect("basic modifiers bundle")
+            .expect("basic modifier bundle")
     }
 
-    /// Creates a new [`BasicModifiersBundle`] bundle with selection buffer.
-    pub fn new_with_selection<G: GaussianPod>(
+    /// Creates a new [`BasicModifierBundle`] bundle with selection buffer.
+    pub fn new_with_selection(
         device: &wgpu::Device,
         gaussians_buffer: &GaussiansBuffer<G>,
         model_transform_buffer: &ModelTransformBuffer,
@@ -363,7 +365,7 @@ impl BasicModifiersBundle {
         rot_scale_buffer: &RotScaleBuffer,
         selection_buffer: &SelectionBuffer,
     ) -> Self {
-        Self::create_bundle_builder::<G>(true)
+        Self::create_bundle_builder(true)
             .build(
                 &device,
                 [
@@ -385,24 +387,25 @@ impl BasicModifiersBundle {
             .map(|bundle| Self {
                 bundle,
                 has_selection: false,
+                gaussian_pod_marker: std::marker::PhantomData,
             })
             .map_err(|e| log::error!("{e}"))
-            .expect("basic modifiers bundle")
+            .expect("basic modifier bundle")
     }
 
-    /// Apply the basic modifiers to the Gaussians.
+    /// Apply the basic modifier to the Gaussians.
     pub fn apply_with_count(&self, encoder: &mut wgpu::CommandEncoder, gaussian_count: u32) {
         self.bundle().dispatch(encoder, gaussian_count);
     }
 
-    /// Creates a new [`ComputeBundleBuilder`] for the basic modifiers.
+    /// Creates a new [`ComputeBundleBuilder`] for the basic modifier.
     ///
     /// This is usually not called directly, but used internally to create the bundle.
-    pub fn create_bundle_builder<'a, G: GaussianPod>(
+    pub fn create_bundle_builder<'a>(
         has_selection: bool,
     ) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
         ComputeBundleBuilder::new()
-            .label("Basic Modifiers")
+            .label("Basic Modifier")
             .bind_group_layouts([
                 &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
                 match has_selection {
@@ -436,7 +439,7 @@ impl BasicModifiersBundle {
     }
 }
 
-impl<G: GaussianPod> Modifier<G> for BasicModifiersBundle {
+impl<G: GaussianPod> Modifier<G> for BasicModifierBundle<G> {
     fn apply(
         &self,
         _device: &wgpu::Device,
@@ -449,33 +452,35 @@ impl<G: GaussianPod> Modifier<G> for BasicModifiersBundle {
     }
 }
 
-impl BasicModifiersBundle<()> {
-    /// Creates a new [`BasicModifiersBundle`] bundle without a bind group.
-    pub fn new_without_bind_group<G: GaussianPod>(device: &wgpu::Device) -> Self {
-        BasicModifiersBundle::create_bundle_builder::<G>(false)
+impl<G: GaussianPod> BasicModifierBundle<G, ()> {
+    /// Creates a new [`BasicModifierBundle`] bundle without a bind group.
+    pub fn new_without_bind_group(device: &wgpu::Device) -> Self {
+        BasicModifierBundle::<G>::create_bundle_builder(false)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
                 has_selection: false,
+                gaussian_pod_marker: std::marker::PhantomData,
             })
-            .expect("basic modifiers bundle")
+            .expect("basic modifier bundle")
     }
 
-    /// Creates a new [`BasicModifiersBundle`] bundle without a bind group with selection buffer.
-    pub fn new_without_bind_group_with_selection<G: GaussianPod>(device: &wgpu::Device) -> Self {
-        BasicModifiersBundle::create_bundle_builder::<G>(true)
+    /// Creates a new [`BasicModifierBundle`] bundle without a bind group with selection buffer.
+    pub fn new_without_bind_group_with_selection(device: &wgpu::Device) -> Self {
+        BasicModifierBundle::<G>::create_bundle_builder(true)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
                 has_selection: true,
+                gaussian_pod_marker: std::marker::PhantomData,
             })
-            .expect("basic modifiers bundle")
+            .expect("basic modifier bundle")
     }
 
-    /// Apply the basic modifiers to the Gaussians.
+    /// Apply the basic modifier to the Gaussians.
     ///
     /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    /// - `bind_group` is the bind group created from [`BasicModifiersBundle::BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    /// - `bind_group` is the bind group created from [`BasicModifierBundle::BIND_GROUP_LAYOUT_DESCRIPTOR`].
     pub fn apply_with_count<'a>(
         &self,
         encoder: &mut wgpu::CommandEncoder,
@@ -485,5 +490,111 @@ impl BasicModifiersBundle<()> {
     ) {
         self.bundle()
             .dispatch(encoder, gaussian_count, [gaussians_bind_group, bind_group]);
+    }
+}
+
+/// A struct to handle basic modifier.
+///
+/// This modifier holds a [`BasicModifierBundle`] along with necessary buffers, and applies the
+/// basic modifier.
+#[derive(Debug)]
+pub struct BasicModifier<G: GaussianPod> {
+    pub transform_flags_buffer: TransformFlagsBuffer,
+    pub basic_color_modifiers_buffer: BasicColorModifiersBuffer,
+    pub rot_scale_buffer: RotScaleBuffer,
+    pub modifier: BasicModifierBundle<G>,
+}
+
+impl<G: GaussianPod> BasicModifier<G> {
+    /// Create a new basic modifier.
+    pub fn new(
+        device: &wgpu::Device,
+        gaussians_buffer: &GaussiansBuffer<G>,
+        model_transform_buffer: &ModelTransformBuffer,
+        gaussian_transform_buffer: &GaussianTransformBuffer,
+    ) -> Self {
+        log::debug!("Creating transform flags buffer");
+        let transform_flags_buffer = TransformFlagsBuffer::new(device);
+
+        log::debug!("Creating basic color modifiers buffer");
+        let basic_color_modifiers_buffer = BasicColorModifiersBuffer::new(device);
+
+        log::debug!("Creating rotation scale buffer");
+        let rot_scale_buffer = RotScaleBuffer::new(device);
+
+        log::debug!("Creating basic modifier bundle");
+        let modifier = BasicModifierBundle::new(
+            device,
+            gaussians_buffer,
+            model_transform_buffer,
+            gaussian_transform_buffer,
+            &transform_flags_buffer,
+            &basic_color_modifiers_buffer,
+            &rot_scale_buffer,
+        );
+
+        log::debug!("Basic modifier created");
+
+        Self {
+            transform_flags_buffer,
+            basic_color_modifiers_buffer,
+            rot_scale_buffer,
+
+            modifier,
+        }
+    }
+
+    /// Create a new basic modifier with selection.
+    pub fn new_with_selection(
+        device: &wgpu::Device,
+        gaussians_buffer: &GaussiansBuffer<G>,
+        model_transform_buffer: &ModelTransformBuffer,
+        gaussian_transform_buffer: &GaussianTransformBuffer,
+        selection_buffer: &SelectionBuffer,
+    ) -> Self {
+        log::debug!("Creating transform flags buffer");
+        let transform_flags_buffer = TransformFlagsBuffer::new(device);
+
+        log::debug!("Creating basic color modifiers buffer");
+        let basic_color_modifiers_buffer = BasicColorModifiersBuffer::new(device);
+
+        log::debug!("Creating rotation scale buffer");
+        let rot_scale_buffer = RotScaleBuffer::new(device);
+
+        log::debug!("Creating basic modifier bundle");
+        let modifier = BasicModifierBundle::new_with_selection(
+            device,
+            gaussians_buffer,
+            model_transform_buffer,
+            gaussian_transform_buffer,
+            &transform_flags_buffer,
+            &basic_color_modifiers_buffer,
+            &rot_scale_buffer,
+            selection_buffer,
+        );
+
+        log::debug!("Basic modifier created");
+
+        Self {
+            transform_flags_buffer,
+            basic_color_modifiers_buffer,
+            rot_scale_buffer,
+
+            modifier,
+        }
+    }
+}
+
+impl<G: GaussianPod> Modifier<G> for BasicModifier<G> {
+    fn apply(
+        &self,
+        _device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        _model_transform: &ModelTransformBuffer,
+        _gaussian_transform: &GaussianTransformBuffer,
+    ) {
+        self.modifier
+            .apply_with_count(encoder, gaussians.len() as u32);
     }
 }

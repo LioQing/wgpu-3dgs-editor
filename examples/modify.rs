@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use glam::*;
 
-use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
+use wgpu_3dgs_editor::{self as gs};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -9,7 +9,7 @@ use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
     version,
     about,
     long_about = "\
-    A 3D Gaussian splatting editor to apply basic modifier to selected Gaussians in a model.
+    A 3D Gaussian splatting editor to apply basic modifier to all Gaussians in a model.
     "
 )]
 struct Args {
@@ -20,57 +20,6 @@ struct Args {
     /// The output path for the modified .ply file.
     #[arg(short, long, default_value = "target/output.ply")]
     output: String,
-
-    /// The position of the selection shape.
-    #[arg(
-        short,
-        long,
-        allow_hyphen_values = true,
-        num_args = 3,
-        value_delimiter = ',',
-        default_value = "0.0,0.0,0.0"
-    )]
-    pos: Vec<f32>,
-
-    /// The rotation of the selection shape.
-    #[arg(
-        short,
-        long,
-        allow_hyphen_values = true,
-        num_args = 4,
-        value_delimiter = ',',
-        default_value = "0.0,0.0,0.0,1.0"
-    )]
-    rot: Vec<f32>,
-
-    /// The scale of the selection shape.
-    #[arg(
-        short,
-        long,
-        allow_hyphen_values = true,
-        num_args = 3,
-        value_delimiter = ',',
-        default_value = "0.5,1.0,2.0"
-    )]
-    scale: Vec<f32>,
-
-    /// The shape of the selection.
-    #[arg(long, value_enum, default_value_t = Shape::Sphere, ignore_case = true)]
-    shape: Shape,
-
-    /// The number of times to run the selection.
-    #[arg(long, default_value = "1")]
-    repeat: u32,
-
-    /// The offset of each selection.
-    #[arg(
-        long,
-        allow_hyphen_values = true,
-        num_args = 3,
-        value_delimiter = ',',
-        default_value = "2.0,0.0,0.0"
-    )]
-    offset: Vec<f32>,
 
     /// Whether to override the RGB color of the selected Gaussians.
     #[arg(long)]
@@ -113,12 +62,6 @@ struct Args {
     gamma: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum Shape {
-    Sphere,
-    Box,
-}
-
 type GaussianPod = gs::core::GaussianPodWithShSingleCov3dRotScaleConfigs;
 
 #[tokio::main]
@@ -127,15 +70,6 @@ async fn main() {
 
     let args = Args::parse();
     let model_path = &args.model;
-    let pos = Vec3::from_slice(&args.pos);
-    let rot = Quat::from_slice(&args.rot);
-    let scale = Vec3::from_slice(&args.scale);
-    let shape = match args.shape {
-        Shape::Sphere => gs::SelectionBundle::<GaussianPod>::create_sphere_bundle,
-        Shape::Box => gs::SelectionBundle::<GaussianPod>::create_box_bundle,
-    };
-    let repeat = args.repeat;
-    let offset = Vec3::from_slice(&args.offset);
 
     log::debug!("Creating wgpu instance");
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
@@ -166,23 +100,17 @@ async fn main() {
     log::debug!("Creating editor");
     let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
 
-    log::debug!("Creating shape selection compute bundle");
-    let shape_selection = shape(&device);
-
-    log::debug!("Creating basic selection modifier");
-    let mut basic_selection_modifier =
-        gs::SelectionModifier::<GaussianPod, _>::new_with_basic_modifier(
-            &device,
-            &editor.gaussians_buffer,
-            &editor.model_transform_buffer,
-            &editor.gaussian_transform_buffer,
-            vec![shape_selection],
-        );
+    log::debug!("Creating basic modifier");
+    let basic_modifier = gs::BasicModifier::<GaussianPod>::new(
+        &device,
+        &editor.gaussians_buffer,
+        &editor.model_transform_buffer,
+        &editor.gaussian_transform_buffer,
+    );
 
     log::debug!("Configuring modifiers");
     match args.override_rgb {
-        true => basic_selection_modifier
-            .modifier
+        true => basic_modifier
             .basic_color_modifiers_buffer
             .update_with_override_rgb(
                 &queue,
@@ -192,8 +120,7 @@ async fn main() {
                 args.exposure,
                 args.gamma,
             ),
-        false => basic_selection_modifier
-            .modifier
+        false => basic_modifier
             .basic_color_modifiers_buffer
             .update_with_hsv_modifiers(
                 &queue,
@@ -204,43 +131,6 @@ async fn main() {
                 args.gamma,
             ),
     }
-
-    log::debug!("Creating shape selection buffers");
-    let shape_selection_buffers = (0..repeat)
-        .map(|i| {
-            let offset_pos = pos + offset * i as f32;
-            let buffer = gs::InvTransformBuffer::new(&device);
-            buffer.update_with_scale_rot_pos(&queue, scale, rot, offset_pos);
-            buffer
-        })
-        .collect::<Vec<_>>();
-
-    log::debug!("Creating shape selection bind groups");
-    let shape_selection_bind_groups = shape_selection_buffers
-        .iter()
-        .map(|buffer| {
-            basic_selection_modifier.selection.bundles[0]
-                .create_bind_group(
-                    &device,
-                    // index 0 is the Gaussians buffer, so we use 1,
-                    // see docs of create_sphere_bundle or create_box_bundle
-                    1,
-                    [buffer.buffer().as_entire_binding()],
-                )
-                .expect("bind group")
-        })
-        .collect::<Vec<_>>();
-
-    log::debug!("Creating selection expression");
-    basic_selection_modifier.selection_expr = shape_selection_bind_groups.into_iter().fold(
-        gs::SelectionExpr::Identity,
-        |acc, bind_group| {
-            acc.union(gs::SelectionExpr::selection(
-                0, // the 0 here is the bundle index in the selection bundle
-                vec![bind_group],
-            ))
-        },
-    );
 
     log::info!("Starting editing process");
     let time = std::time::Instant::now();
@@ -253,7 +143,7 @@ async fn main() {
     editor.apply(
         &device,
         &mut encoder,
-        [&basic_selection_modifier as &dyn gs::Modifier<GaussianPod>],
+        [&basic_modifier as &dyn gs::Modifier<GaussianPod>],
     );
 
     queue.submit(Some(encoder.finish()));

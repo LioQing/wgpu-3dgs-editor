@@ -30,6 +30,11 @@ path = "examples/filter_selection.rs"
 doc-scrape-examples = true
 
 [[example]]
+name = "modify"
+path = "examples/modify.rs"
+doc-scrape-examples = true
+
+[[example]]
 name = "modify-selection"
 path = "examples/modify_selection.rs"
 doc-scrape-examples = true

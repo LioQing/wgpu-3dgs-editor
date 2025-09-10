@@ -100,125 +100,143 @@ async fn main() {
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
 
-    let bind_group_layout_descriptor = wgpu::BindGroupLayoutDescriptor {
-        label: Some("Bind Group Layout"),
-        entries: &[
-            // Position uniform buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+    const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+        wgpu::BindGroupLayoutDescriptor {
+            label: Some("Bind Group Layout"),
+            entries: &[
+                // Position uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            // Radius uniform buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                // Radius uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-            // Selection buffer (only in modifier pipeline)
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                // Selection buffer (only in modifier pipeline)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            },
-        ],
-    };
-
-    log::debug!("Creating selection buffer");
-    let selection_buffer = gs::SelectionBuffer::new(&device, editor.gaussians_buffer.len() as u32);
+            ],
+        };
 
     log::debug!("Creating cylinder selection compute bundle");
-    let selection_bundle = gs::SelectionBundle::new::<GaussianPod>(
-        &device,
-        vec![
-            gs::core::ComputeBundleBuilder::new()
-                .label("Selection")
-                .bind_group_layouts([
-                    &gs::SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-                    &wgpu::BindGroupLayoutDescriptor {
-                        entries: &bind_group_layout_descriptor.entries[..2],
-                        ..bind_group_layout_descriptor
-                    },
-                ])
-                .main_shader("package::selection".parse().unwrap())
-                .entry_point("main")
-                .wesl_compile_options(wesl::CompileOptions {
-                    features: GaussianPod::wesl_features(),
-                    ..Default::default()
-                })
-                .resolver({
-                    let mut resolver =
-                        wesl::StandardResolver::new("examples/shader/custom_modify_selection");
-                    resolver.add_package(&gs::core::shader::PACKAGE);
-                    resolver
-                })
-                .build_without_bind_groups(&device)
-                .map_err(|e| log::error!("{e}"))
-                .expect("selection bundle"),
-        ],
-    );
-
-    log::debug!("Creating custom modifier compute bundle");
-    let modifier_bundle = gs::core::ComputeBundleBuilder::new()
-        .label("Modifier")
+    let cylinder_selection_bundle = gs::core::ComputeBundleBuilder::new()
+        .label("Selection")
         .bind_group_layouts([
-            &gs::MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-            &bind_group_layout_descriptor,
+            &gs::SelectionBundle::<GaussianPod>::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+            &wgpu::BindGroupLayoutDescriptor {
+                entries: &BIND_GROUP_LAYOUT_DESCRIPTOR.entries[..2],
+                ..BIND_GROUP_LAYOUT_DESCRIPTOR
+            },
         ])
-        .resolver({
-            let mut resolver =
-                wesl::StandardResolver::new("examples/shader/custom_modify_selection");
-            resolver.add_package(&gs::core::shader::PACKAGE);
-            resolver.add_package(&gs::shader::PACKAGE);
-            resolver
-        })
-        .main_shader("package::modifier".parse().unwrap())
+        .main_shader("package::selection".parse().unwrap())
         .entry_point("main")
         .wesl_compile_options(wesl::CompileOptions {
             features: GaussianPod::wesl_features(),
             ..Default::default()
         })
-        .build(
-            &device,
-            [
-                vec![
-                    editor.gaussians_buffer.buffer().as_entire_binding(),
-                    editor.model_transform_buffer.buffer().as_entire_binding(),
-                    editor
-                        .gaussian_transform_buffer
-                        .buffer()
-                        .as_entire_binding(),
-                ],
-                vec![
-                    pos_buffer.as_entire_binding(),
-                    radius_buffer.as_entire_binding(),
-                    selection_buffer.buffer().as_entire_binding(),
-                ],
-            ],
-        )
+        .resolver({
+            let mut resolver =
+                wesl::StandardResolver::new("examples/shader/custom_modify_selection");
+            resolver.add_package(&gs::core::shader::PACKAGE);
+            resolver
+        })
+        .build_without_bind_groups(&device)
         .map_err(|e| log::error!("{e}"))
-        .expect("modifier bundle");
+        .expect("selection bundle");
+
+    log::debug!("Creating custom modifier factory");
+    // Here we use a factory closure that returns a modifier closure
+    // But in a more structured program, you may want to create a struct that implements Modifier
+    // and holds the compute bundle and other necessary data as fields.
+    //
+    // See documentation of `SelectionModifier` for more details.
+    let modifier_factory = |selection_buffer: &gs::SelectionBuffer| /* -> impl gs::Modifier<GaussianPod> */ {
+            log::debug!("Creating custom modifier compute bundle");
+            let modifier_bundle = gs::core::ComputeBundleBuilder::new()
+                .label("Modifier")
+                .bind_group_layouts([
+                    &gs::MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                    &BIND_GROUP_LAYOUT_DESCRIPTOR,
+                ])
+                .resolver({
+                    let mut resolver =
+                        wesl::StandardResolver::new("examples/shader/custom_modify_selection");
+                    resolver.add_package(&gs::core::shader::PACKAGE);
+                    resolver.add_package(&gs::shader::PACKAGE);
+                    resolver
+                })
+                .main_shader("package::modifier".parse().unwrap())
+                .entry_point("main")
+                .wesl_compile_options(wesl::CompileOptions {
+                    features: GaussianPod::wesl_features(),
+                    ..Default::default()
+                })
+                .build(
+                    &device,
+                    [
+                        vec![
+                            editor.gaussians_buffer.buffer().as_entire_binding(),
+                            editor.model_transform_buffer.buffer().as_entire_binding(),
+                            editor
+                                .gaussian_transform_buffer
+                                .buffer()
+                                .as_entire_binding(),
+                        ],
+                        vec![
+                            pos_buffer.as_entire_binding(),
+                            radius_buffer.as_entire_binding(),
+                            selection_buffer.buffer().as_entire_binding(),
+                        ],
+                    ],
+                )
+                .map_err(|e| log::error!("{e}"))
+                .expect("modifier bundle");
+
+            // This function signature has blanket impl of the modifier trait
+            move |_device: &wgpu::Device,
+                  encoder: &mut wgpu::CommandEncoder,
+                  gaussians: &gs::core::GaussiansBuffer<GaussianPod>,
+                  _model_transform: &gs::core::ModelTransformBuffer,
+                  _gaussian_transform: &gs::core::GaussianTransformBuffer| {
+                modifier_bundle.dispatch(encoder, gaussians.len() as u32);
+            }
+        };
+
+    log::debug!("Creating selection modifier");
+    let mut selection_modifier = gs::SelectionModifier::<GaussianPod, _>::new(
+        &device,
+        &editor.gaussians_buffer,
+        vec![cylinder_selection_bundle],
+        modifier_factory,
+    );
 
     log::debug!("Creating selection expression");
-    let selection_expr = gs::SelectionExpr::selection(
+    selection_modifier.selection_expr = gs::SelectionExpr::selection(
         0,
         vec![
-            selection_bundle.bundles[0]
+            selection_modifier.selection.bundles[0]
                 .create_bind_group(
                     &device,
                     1, // index 0 is the Gaussians buffer, so we use 1,
@@ -231,25 +249,6 @@ async fn main() {
         ],
     );
 
-    log::debug!("Creating modifier");
-    let modifier = |device: &wgpu::Device,
-                    encoder: &mut wgpu::CommandEncoder,
-                    gaussians: &gs::core::GaussiansBuffer<GaussianPod>,
-                    model_transform: &gs::core::ModelTransformBuffer,
-                    gaussian_transform: &gs::core::GaussianTransformBuffer| {
-        selection_bundle.evaluate(
-            &device,
-            encoder,
-            &selection_expr,
-            &selection_buffer,
-            model_transform,
-            gaussian_transform,
-            gaussians,
-        );
-
-        modifier_bundle.dispatch(encoder, gaussians.len() as u32);
-    };
-
     log::info!("Starting editing process");
     let time = std::time::Instant::now();
 
@@ -261,7 +260,7 @@ async fn main() {
     editor.apply(
         &device,
         &mut encoder,
-        [&modifier as &dyn gs::Modifier<GaussianPod>],
+        [&selection_modifier as &dyn gs::Modifier<GaussianPod>],
     );
 
     queue.submit(Some(encoder.finish()));
