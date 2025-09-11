@@ -1,5 +1,5 @@
 use crate::{
-    BasicModifier, Modifier, SelectionBuffer, SelectionBundle, SelectionExpr,
+    BasicModifier, Modifier, SelectionBuffer, SelectionBundle, SelectionExpr, WithSelection,
     core::{
         ComputeBundle, GaussianPod, GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
     },
@@ -58,7 +58,7 @@ use crate::{
 ///     &gaussians_buffer,
 ///     selection_bundles,
 ///     |selection_buffer| { // The factory closure
-///         BasicModifier::<G>::new_with_selection(
+///         BasicModifier::<G, _>::new_with_selection(
 ///             device,
 ///             // Your buffers,
 ///             selection_buffer,
@@ -132,37 +132,6 @@ impl<G: GaussianPod, M: Modifier<G>> SelectionModifier<G, M> {
     }
 }
 
-impl<G: GaussianPod> SelectionModifier<G, BasicModifier<G>> {
-    /// Create a new selection modifier with [`BasicModifier`].
-    ///
-    /// `bundles` are used for [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], or
-    /// [`SelectionExpr::Selection`], they must have the same bind group 0 as the
-    /// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
-    /// [`SelectionBundle`] for more details.
-    pub fn new_with_basic_modifier(
-        device: &wgpu::Device,
-        gaussians_buffer: &GaussiansBuffer<G>,
-        model_transform: &ModelTransformBuffer,
-        gaussian_transform: &GaussianTransformBuffer,
-        selection_bundles: Vec<ComputeBundle<()>>,
-    ) -> Self {
-        Self::new(
-            device,
-            gaussians_buffer,
-            selection_bundles,
-            |selection_buffer| {
-                BasicModifier::<G>::new_with_selection(
-                    device,
-                    gaussians_buffer,
-                    model_transform,
-                    gaussian_transform,
-                    selection_buffer,
-                )
-            },
-        )
-    }
-}
-
 impl<G: GaussianPod, M: Modifier<G>> Modifier<G> for SelectionModifier<G, M> {
     fn apply(
         &self,
@@ -189,5 +158,39 @@ impl<G: GaussianPod, M: Modifier<G>> Modifier<G> for SelectionModifier<G, M> {
             model_transform,
             gaussian_transform,
         );
+    }
+}
+
+/// A type alias of [`SelectionModifier`] with [`BasicModifier`].
+pub type BasicSelectionModifier<G> = SelectionModifier<G, BasicModifier<G, WithSelection>>;
+
+impl<G: GaussianPod> BasicSelectionModifier<G> {
+    /// Create a new selection modifier with [`BasicModifier`].
+    ///
+    /// `bundles` are used for [`SelectionExpr::Unary`], [`SelectionExpr::Binary`], or
+    /// [`SelectionExpr::Selection`], they must have the same bind group 0 as the
+    /// [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
+    /// [`SelectionBundle`] for more details.
+    pub fn new_with_basic_modifier(
+        device: &wgpu::Device,
+        gaussians_buffer: &GaussiansBuffer<G>,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+        selection_bundles: Vec<ComputeBundle<()>>,
+    ) -> Self {
+        Self::new(
+            device,
+            gaussians_buffer,
+            selection_bundles,
+            |selection_buffer| {
+                BasicModifier::<G, _>::new_with_selection(
+                    device,
+                    gaussians_buffer,
+                    model_transform,
+                    gaussian_transform,
+                    selection_buffer,
+                )
+            },
+        )
     }
 }
