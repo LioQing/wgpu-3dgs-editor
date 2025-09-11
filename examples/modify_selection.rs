@@ -170,14 +170,13 @@ async fn main() {
     let shape_selection = shape(&device);
 
     log::debug!("Creating basic selection modifier");
-    let mut basic_selection_modifier =
-        gs::SelectionModifier::<GaussianPod, _>::new_with_basic_modifier(
-            &device,
-            &editor.gaussians_buffer,
-            &editor.model_transform_buffer,
-            &editor.gaussian_transform_buffer,
-            vec![shape_selection],
-        );
+    let mut basic_selection_modifier = gs::SelectionModifier::new_with_basic_modifier(
+        &device,
+        &editor.gaussians_buffer,
+        &editor.model_transform_buffer,
+        &editor.gaussian_transform_buffer,
+        vec![shape_selection],
+    );
 
     log::debug!("Configuring modifiers");
     match args.override_rgb {

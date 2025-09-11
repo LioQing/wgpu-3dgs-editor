@@ -53,12 +53,12 @@ use crate::{
 ///     }
 /// }
 ///
-/// let selection_modifier = SelectionModifier::<GaussianPod, _>::new(
+/// let selection_modifier = SelectionModifier::new(
 ///     &device,
 ///     &gaussians_buffer,
 ///     selection_bundles,
 ///     |selection_buffer| { // The factory closure
-///         BasicModifier::<G, _>::new_with_selection(
+///         BasicModifier::new_with_selection(
 ///             device,
 ///             // Your buffers,
 ///             selection_buffer,
@@ -71,7 +71,7 @@ use crate::{
 /// harm readability of your code).
 ///
 /// ```rust
-/// let selection_modifier = SelectionModifier::<GaussianPod, _>::new(
+/// let selection_modifier = SelectionModifier::<GaussianPod>::new(
 ///     &device,
 ///     &gaussians_buffer,
 ///     selection_bundles,
@@ -183,7 +183,7 @@ impl<G: GaussianPod> BasicSelectionModifier<G> {
             gaussians_buffer,
             selection_bundles,
             |selection_buffer| {
-                BasicModifier::<G, _>::new_with_selection(
+                BasicModifier::new_with_selection(
                     device,
                     gaussians_buffer,
                     model_transform,
