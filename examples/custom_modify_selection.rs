@@ -42,9 +42,9 @@ struct Args {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum Shape {
-    Sphere,
-    Box,
+enum Factory {
+    Struct,
+    Closure,
 }
 
 type GaussianPod = gs::core::GaussianPodWithShSingleCov3dRotScaleConfigs;
@@ -166,12 +166,8 @@ async fn main() {
         .map_err(|e| log::error!("{e}"))
         .expect("selection bundle");
 
-    log::debug!("Creating custom modifier factory");
-    // Here we use a factory closure that returns a modifier closure
-    // But in a more structured program, you may want to create a struct that implements Modifier
-    // and holds the compute bundle and other necessary data as fields.
-    //
-    // See documentation of `SelectionModifier` for more details.
+    log::debug!("Creating custom modifier");
+    #[allow(dead_code)]
     let modifier_factory = |selection_buffer: &gs::SelectionBuffer| /* -> impl gs::Modifier<GaussianPod> */ {
             log::debug!("Creating custom modifier compute bundle");
             let modifier_bundle = gs::core::ComputeBundleBuilder::new()
@@ -214,15 +210,85 @@ async fn main() {
                 .map_err(|e| log::error!("{e}"))
                 .expect("modifier bundle");
 
-            // This function signature has blanket impl of the modifier trait
+            // This is a modifier closure because this function signature has blanket impl of the modifier trait
             move |_device: &wgpu::Device,
                   encoder: &mut wgpu::CommandEncoder,
                   gaussians: &gs::core::GaussiansBuffer<GaussianPod>,
                   _model_transform: &gs::core::ModelTransformBuffer,
                   _gaussian_transform: &gs::core::GaussianTransformBuffer| {
-                modifier_bundle.dispatch(encoder, gaussians.len() as u32);
+                  modifier_bundle.dispatch(encoder, gaussians.len() as u32);
             }
         };
+
+    #[allow(dead_code)]
+    struct Modifier<G: gs::core::GaussianPod>(gs::core::ComputeBundle, std::marker::PhantomData<G>);
+
+    impl<G: gs::core::GaussianPod> Modifier<G> {
+        #[allow(dead_code)]
+        fn new(
+            device: &wgpu::Device,
+            editor: &gs::Editor<G>,
+            pos_buffer: &wgpu::Buffer,
+            radius_buffer: &wgpu::Buffer,
+            selection_buffer: &gs::SelectionBuffer,
+        ) -> Self {
+            log::debug!("Creating custom modifier compute bundle");
+            let modifier_bundle = gs::core::ComputeBundleBuilder::new()
+                .label("Modifier")
+                .bind_group_layouts([
+                    &gs::MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                    &BIND_GROUP_LAYOUT_DESCRIPTOR,
+                ])
+                .resolver({
+                    let mut resolver =
+                        wesl::StandardResolver::new("examples/shader/custom_modify_selection");
+                    resolver.add_package(&gs::core::shader::PACKAGE);
+                    resolver.add_package(&gs::shader::PACKAGE);
+                    resolver
+                })
+                .main_shader("package::modifier".parse().unwrap())
+                .entry_point("main")
+                .wesl_compile_options(wesl::CompileOptions {
+                    features: GaussianPod::wesl_features(),
+                    ..Default::default()
+                })
+                .build(
+                    &device,
+                    [
+                        vec![
+                            editor.gaussians_buffer.buffer().as_entire_binding(),
+                            editor.model_transform_buffer.buffer().as_entire_binding(),
+                            editor
+                                .gaussian_transform_buffer
+                                .buffer()
+                                .as_entire_binding(),
+                        ],
+                        vec![
+                            pos_buffer.as_entire_binding(),
+                            radius_buffer.as_entire_binding(),
+                            selection_buffer.buffer().as_entire_binding(),
+                        ],
+                    ],
+                )
+                .map_err(|e| log::error!("{e}"))
+                .expect("modifier bundle");
+
+            Self(modifier_bundle, std::marker::PhantomData)
+        }
+    }
+
+    impl<G: gs::core::GaussianPod> gs::Modifier<G> for Modifier<G> {
+        fn apply(
+            &self,
+            _device: &wgpu::Device,
+            encoder: &mut wgpu::CommandEncoder,
+            gaussians: &gs::core::GaussiansBuffer<G>,
+            _model_transform: &gs::core::ModelTransformBuffer,
+            _gaussian_transform: &gs::core::GaussianTransformBuffer,
+        ) {
+            self.0.dispatch(encoder, gaussians.len() as u32);
+        }
+    }
 
     log::debug!("Creating selection modifier");
     let mut selection_modifier = gs::SelectionModifier::<GaussianPod, _>::new(
@@ -230,6 +296,16 @@ async fn main() {
         &editor.gaussians_buffer,
         vec![cylinder_selection_bundle],
         modifier_factory,
+        // Uncomment the following line to use modifier struct instead of closure
+        // |selection_buffer| {
+        //     Modifier::new(
+        //         &device,
+        //         &editor,
+        //         &pos_buffer,
+        //         &radius_buffer,
+        //         selection_buffer,
+        //     )
+        // },
     );
 
     log::debug!("Creating selection expression");

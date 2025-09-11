@@ -155,7 +155,7 @@ fn apply_basic_color_modifiers(
     var rgb = in_color.rgb;
 
     if any(modifiers.rgb_or_hsv < vec3<f32>(0.0)) {
-        rgb = modifiers.rgb_or_hsv;
+        rgb = abs(modifiers.rgb_or_hsv);
     } else {
         let hsv = rgb_to_hsv(rgb);
         let modified_hsv = apply_hsv(hsv, modifiers.rgb_or_hsv);

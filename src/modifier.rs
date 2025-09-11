@@ -216,93 +216,35 @@ pub const MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayout
         ],
     };
 
+/// A marker struct to indicate that a modifier takes a selection buffer.
+#[derive(Debug)]
+pub struct WithSelection;
+
+/// A marker struct to indicate that a modifier does not take a selection buffer.
+#[derive(Debug)]
+pub struct NoSelection;
+
 /// A specialized [`ComputeBundle`] for some built-in basic modifier.
 ///
 /// This bundle includes the modifiers for [`BasicColorModifiersBuffer`],
 /// [`RotScaleBuffer`], and [`TransformFlagsBuffer`] (which provides flags for applying
 /// [`core::ModelTransformBuffer`] and [`core::GaussianTransformBuffer`]).
 #[derive(Debug)]
-pub struct BasicModifierBundle<G: GaussianPod, B = wgpu::BindGroup> {
+pub struct BasicModifierBundle<G: GaussianPod, S = NoSelection, B = wgpu::BindGroup> {
     bundle: ComputeBundle<B>,
-    has_selection: bool,
     gaussian_pod_marker: std::marker::PhantomData<G>,
+    selection_marker: std::marker::PhantomData<S>,
 }
 
-impl<G: GaussianPod, B> BasicModifierBundle<G, B> {
+impl<G: GaussianPod, S, B> BasicModifierBundle<G, S, B> {
     /// Gets the inner [`ComputeBundle`].
     pub fn bundle(&self) -> &ComputeBundle<B> {
         &self.bundle
     }
-
-    /// Checks if this bundle takes a selection buffer to selectively apply modifiers.
-    pub fn has_selection(&self) -> bool {
-        self.has_selection
-    }
 }
 
 impl<G: GaussianPod> BasicModifierBundle<G> {
-    /// The bind group layout descriptor for the basic modifier with a selection buffer.
-    ///
-    /// Thie bind group layout takes the following buffers:
-    /// - [`TransformFlagsBuffer`]
-    /// - [`BasicColorModifiersBuffer`]
-    /// - [`RotScaleBuffer`]
-    /// - [`SelectionBuffer`]
-    ///
-    /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub const BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION: wgpu::BindGroupLayoutDescriptor<
-        'static,
-    > = wgpu::BindGroupLayoutDescriptor {
-        label: Some("Basic Modifier Bind Group Layout"),
-        entries: &[
-            // Transform flags uniform buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            // Basic color modifiers uniform buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            // Scale rotation uniform buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-            // Selection buffer
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-        ],
-    };
-
-    /// The bind group layout descriptor for the basic modifier without a selection buffer.
+    /// The bind group layout descriptor for the [`BasicModifierBundle`].
     ///
     /// This bind group layout takes the following buffers:
     /// - [`TransformFlagsBuffer`]
@@ -313,7 +255,7 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Basic Modifier Bind Group Layout"),
-            entries: &Self::BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION
+            entries: &BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR
                 .entries
                 .split_at(3)
                 .0,
@@ -329,7 +271,7 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         rot_scale_buffer: &RotScaleBuffer,
     ) -> Self {
-        Self::create_bundle_builder(false)
+        create_basic_modifier_bundle_builder::<G>(false)
             .build(
                 &device,
                 [
@@ -347,14 +289,76 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
             )
             .map(|bundle| Self {
                 bundle,
-                has_selection: false,
                 gaussian_pod_marker: std::marker::PhantomData,
+                selection_marker: std::marker::PhantomData,
             })
             .map_err(|e| log::error!("{e}"))
             .expect("basic modifier bundle")
     }
+}
 
-    /// Creates a new [`BasicModifierBundle`] bundle with selection buffer.
+impl<G: GaussianPod> BasicModifierBundle<G, WithSelection> {
+    /// The bind group layout descriptor for the [`BasicModifierBundle`] with a [`SelectionBuffer`].
+    ///
+    /// Thie bind group layout takes the following buffers:
+    /// - [`TransformFlagsBuffer`]
+    /// - [`BasicColorModifiersBuffer`]
+    /// - [`RotScaleBuffer`]
+    /// - [`SelectionBuffer`]
+    ///
+    /// This is at group 1, because group 0 is the [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
+    pub const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
+        wgpu::BindGroupLayoutDescriptor {
+            label: Some("Basic Modifier Bind Group Layout"),
+            entries: &[
+                // Transform flags uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // Basic color modifiers uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // Scale rotation uniform buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // Selection buffer
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        };
+
+    /// Creates a new [`BasicModifierBundle`] bundle with [`SelectionBuffer`].
     pub fn new_with_selection(
         device: &wgpu::Device,
         gaussians_buffer: &GaussiansBuffer<G>,
@@ -365,81 +369,41 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
         rot_scale_buffer: &RotScaleBuffer,
         selection_buffer: &SelectionBuffer,
     ) -> Self {
-        Self::create_bundle_builder(true)
+        create_basic_modifier_bundle_builder::<G>(true)
             .build(
                 &device,
                 [
-                    [
+                    vec![
                         gaussians_buffer.buffer().as_entire_binding(),
                         model_transform_buffer.buffer().as_entire_binding(),
                         gaussian_transform_buffer.buffer().as_entire_binding(),
-                    ]
-                    .to_vec(),
-                    [
+                    ],
+                    vec![
                         transform_flags_buffer.buffer().as_entire_binding(),
                         basic_color_modifiers_buffer.buffer().as_entire_binding(),
                         rot_scale_buffer.buffer().as_entire_binding(),
                         selection_buffer.buffer().as_entire_binding(),
-                    ]
-                    .to_vec(),
+                    ],
                 ],
             )
             .map(|bundle| Self {
                 bundle,
-                has_selection: false,
                 gaussian_pod_marker: std::marker::PhantomData,
+                selection_marker: std::marker::PhantomData,
             })
             .map_err(|e| log::error!("{e}"))
             .expect("basic modifier bundle")
     }
+}
 
+impl<G: GaussianPod, S> BasicModifierBundle<G, S> {
     /// Apply the basic modifier to the Gaussians.
     pub fn apply_with_count(&self, encoder: &mut wgpu::CommandEncoder, gaussian_count: u32) {
         self.bundle().dispatch(encoder, gaussian_count);
     }
-
-    /// Creates a new [`ComputeBundleBuilder`] for the basic modifier.
-    ///
-    /// This is usually not called directly, but used internally to create the bundle.
-    pub fn create_bundle_builder<'a>(
-        has_selection: bool,
-    ) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
-        ComputeBundleBuilder::new()
-            .label("Basic Modifier")
-            .bind_group_layouts([
-                &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-                match has_selection {
-                    true => &Self::BIND_GROUP_LAYOUT_DESCRIPTOR_WITH_SELECTION,
-                    false => &Self::BIND_GROUP_LAYOUT_DESCRIPTOR,
-                },
-            ])
-            .resolver({
-                let mut resolver = wesl::PkgResolver::new();
-                resolver.add_package(&core::shader::PACKAGE);
-                resolver.add_package(&shader::PACKAGE);
-                resolver
-            })
-            .main_shader(
-                "wgpu_3dgs_editor::modifier::basic"
-                    .parse()
-                    .expect("modifier::basic module path"),
-            )
-            .entry_point("main")
-            .wesl_compile_options(wesl::CompileOptions {
-                features: wesl::Features {
-                    flags: G::features()
-                        .into_iter()
-                        .chain(std::iter::once(("selection_buffer", has_selection.into())))
-                        .map(|(k, v)| (k.to_string(), v.into()))
-                        .collect(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-    }
 }
 
-impl<G: GaussianPod> Modifier<G> for BasicModifierBundle<G> {
+impl<G: GaussianPod, S> Modifier<G> for BasicModifierBundle<G, S> {
     fn apply(
         &self,
         _device: &wgpu::Device,
@@ -452,31 +416,35 @@ impl<G: GaussianPod> Modifier<G> for BasicModifierBundle<G> {
     }
 }
 
-impl<G: GaussianPod> BasicModifierBundle<G, ()> {
+impl<G: GaussianPod> BasicModifierBundle<G, NoSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group.
     pub fn new_without_bind_group(device: &wgpu::Device) -> Self {
-        BasicModifierBundle::<G>::create_bundle_builder(false)
+        create_basic_modifier_bundle_builder::<G>(false)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
-                has_selection: false,
                 gaussian_pod_marker: std::marker::PhantomData,
+                selection_marker: std::marker::PhantomData,
             })
             .expect("basic modifier bundle")
     }
+}
 
+impl<G: GaussianPod> BasicModifierBundle<G, WithSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group with selection buffer.
     pub fn new_without_bind_group_with_selection(device: &wgpu::Device) -> Self {
-        BasicModifierBundle::<G>::create_bundle_builder(true)
+        create_basic_modifier_bundle_builder::<G>(true)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
-                has_selection: true,
                 gaussian_pod_marker: std::marker::PhantomData,
+                selection_marker: std::marker::PhantomData,
             })
             .expect("basic modifier bundle")
     }
+}
 
+impl<G: GaussianPod, S> BasicModifierBundle<G, S, ()> {
     /// Apply the basic modifier to the Gaussians.
     ///
     /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
@@ -493,16 +461,54 @@ impl<G: GaussianPod> BasicModifierBundle<G, ()> {
     }
 }
 
+/// Creates a new [`ComputeBundleBuilder`] for the basic modifier.
+fn create_basic_modifier_bundle_builder<'a, G: GaussianPod>(
+    has_selection: bool,
+) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
+    ComputeBundleBuilder::new()
+        .label("Basic Modifier")
+        .bind_group_layouts([
+            &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+            match has_selection {
+                true => &BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR,
+                false => &BasicModifierBundle::<G>::BIND_GROUP_LAYOUT_DESCRIPTOR,
+            },
+        ])
+        .resolver({
+            let mut resolver = wesl::PkgResolver::new();
+            resolver.add_package(&core::shader::PACKAGE);
+            resolver.add_package(&shader::PACKAGE);
+            resolver
+        })
+        .main_shader(
+            "wgpu_3dgs_editor::modifier::basic"
+                .parse()
+                .expect("modifier::basic module path"),
+        )
+        .entry_point("main")
+        .wesl_compile_options(wesl::CompileOptions {
+            features: wesl::Features {
+                flags: G::features()
+                    .into_iter()
+                    .chain(std::iter::once(("selection_buffer", has_selection)))
+                    .map(|(k, v)| (k.to_string(), v.into()))
+                    .collect(),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+}
+
 /// A struct to handle basic modifier.
 ///
 /// This modifier holds a [`BasicModifierBundle`] along with necessary buffers, and applies the
 /// basic modifier.
 #[derive(Debug)]
-pub struct BasicModifier<G: GaussianPod> {
+pub struct BasicModifier<G: GaussianPod, S = NoSelection> {
     pub transform_flags_buffer: TransformFlagsBuffer,
     pub basic_color_modifiers_buffer: BasicColorModifiersBuffer,
     pub rot_scale_buffer: RotScaleBuffer,
-    pub modifier: BasicModifierBundle<G>,
+    pub modifier: BasicModifierBundle<G, S>,
 }
 
 impl<G: GaussianPod> BasicModifier<G> {
@@ -543,7 +549,9 @@ impl<G: GaussianPod> BasicModifier<G> {
             modifier,
         }
     }
+}
 
+impl<G: GaussianPod> BasicModifier<G, WithSelection> {
     /// Create a new basic modifier with selection.
     pub fn new_with_selection(
         device: &wgpu::Device,
@@ -585,7 +593,7 @@ impl<G: GaussianPod> BasicModifier<G> {
     }
 }
 
-impl<G: GaussianPod> Modifier<G> for BasicModifier<G> {
+impl<G: GaussianPod, S> Modifier<G> for BasicModifier<G, S> {
     fn apply(
         &self,
         _device: &wgpu::Device,
