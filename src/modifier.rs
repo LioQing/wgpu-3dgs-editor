@@ -271,7 +271,7 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
         basic_color_modifiers_buffer: &BasicColorModifiersBuffer,
         rot_scale_buffer: &RotScaleBuffer,
     ) -> Self {
-        create_basic_modifier_bundle_builder::<G>(false)
+        Self::create_bundle_builder(false)
             .build(
                 &device,
                 [
@@ -294,6 +294,44 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
             })
             .map_err(|e| log::error!("{e}"))
             .expect("basic modifier bundle")
+    }
+
+    /// Creates a new [`ComputeBundleBuilder`] for the basic modifier.
+    fn create_bundle_builder<'a>(
+        has_selection: bool,
+    ) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
+        ComputeBundleBuilder::new()
+            .label("Basic Modifier")
+            .bind_group_layouts([
+                &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+                match has_selection {
+                    true => &BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR,
+                    false => &BasicModifierBundle::<G>::BIND_GROUP_LAYOUT_DESCRIPTOR,
+                },
+            ])
+            .resolver({
+                let mut resolver = wesl::PkgResolver::new();
+                resolver.add_package(&core::shader::PACKAGE);
+                resolver.add_package(&shader::PACKAGE);
+                resolver
+            })
+            .main_shader(
+                "wgpu_3dgs_editor::modifier::basic"
+                    .parse()
+                    .expect("modifier::basic module path"),
+            )
+            .entry_point("main")
+            .wesl_compile_options(wesl::CompileOptions {
+                features: wesl::Features {
+                    flags: G::features()
+                        .into_iter()
+                        .chain(std::iter::once(("selection_buffer", has_selection)))
+                        .map(|(k, v)| (k.to_string(), v.into()))
+                        .collect(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
     }
 }
 
@@ -369,7 +407,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, WithSelection> {
         rot_scale_buffer: &RotScaleBuffer,
         selection_buffer: &SelectionBuffer,
     ) -> Self {
-        create_basic_modifier_bundle_builder::<G>(true)
+        BasicModifierBundle::<G>::create_bundle_builder(true)
             .build(
                 &device,
                 [
@@ -419,7 +457,7 @@ impl<G: GaussianPod, S> Modifier<G> for BasicModifierBundle<G, S> {
 impl<G: GaussianPod> BasicModifierBundle<G, NoSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group.
     pub fn new_without_bind_group(device: &wgpu::Device) -> Self {
-        create_basic_modifier_bundle_builder::<G>(false)
+        BasicModifierBundle::<G>::create_bundle_builder(false)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
@@ -433,7 +471,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, NoSelection, ()> {
 impl<G: GaussianPod> BasicModifierBundle<G, WithSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group with selection buffer.
     pub fn new_without_bind_group_with_selection(device: &wgpu::Device) -> Self {
-        create_basic_modifier_bundle_builder::<G>(true)
+        BasicModifierBundle::<G>::create_bundle_builder(true)
             .build_without_bind_groups(&device)
             .map(|bundle| Self {
                 bundle,
@@ -459,44 +497,6 @@ impl<G: GaussianPod, S> BasicModifierBundle<G, S, ()> {
         self.bundle()
             .dispatch(encoder, gaussian_count, [gaussians_bind_group, bind_group]);
     }
-}
-
-/// Creates a new [`ComputeBundleBuilder`] for the basic modifier.
-fn create_basic_modifier_bundle_builder<'a, G: GaussianPod>(
-    has_selection: bool,
-) -> ComputeBundleBuilder<'a, wesl::PkgResolver> {
-    ComputeBundleBuilder::new()
-        .label("Basic Modifier")
-        .bind_group_layouts([
-            &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-            match has_selection {
-                true => &BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR,
-                false => &BasicModifierBundle::<G>::BIND_GROUP_LAYOUT_DESCRIPTOR,
-            },
-        ])
-        .resolver({
-            let mut resolver = wesl::PkgResolver::new();
-            resolver.add_package(&core::shader::PACKAGE);
-            resolver.add_package(&shader::PACKAGE);
-            resolver
-        })
-        .main_shader(
-            "wgpu_3dgs_editor::modifier::basic"
-                .parse()
-                .expect("modifier::basic module path"),
-        )
-        .entry_point("main")
-        .wesl_compile_options(wesl::CompileOptions {
-            features: wesl::Features {
-                flags: G::features()
-                    .into_iter()
-                    .chain(std::iter::once(("selection_buffer", has_selection)))
-                    .map(|(k, v)| (k.to_string(), v.into()))
-                    .collect(),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
 }
 
 /// A struct to handle basic modifier.

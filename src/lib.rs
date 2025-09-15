@@ -33,8 +33,8 @@ use wgpu_3dgs_core::{
 /// If you wish to manage these buffers yourself, you do not need to use this struct.
 ///
 /// Note that some [`GaussianPod`] configurations may not be able to be downloaded after
-/// modification, see documentations of [`GaussianShConfig`](core::GaussianShConfig) and
-/// [`GaussianCov3dConfig`](core::GaussianCov3dConfig) for details.
+/// modification, see documentations of [`core::GaussianShConfig`] and [`core::GaussianCov3dConfig`]
+/// for details.
 pub struct Editor<G: GaussianPod> {
     pub model_transform_buffer: ModelTransformBuffer,
     pub gaussian_transform_buffer: GaussianTransformBuffer,

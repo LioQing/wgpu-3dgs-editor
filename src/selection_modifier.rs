@@ -130,22 +130,26 @@ impl<G: GaussianPod, M: Modifier<G>> SelectionModifier<G, M> {
             modifier,
         }
     }
-}
 
-impl<G: GaussianPod, M: Modifier<G>> Modifier<G> for SelectionModifier<G, M> {
-    fn apply(
+    /// Apply the selection and the modifier with the given expression and buffer.
+    ///
+    /// [`SelectionModifier::apply`] is the equivalent of applying this function with
+    /// [`SelectionModifier::selection_expr`] and [`SelectionModifier::selection_buffer`].
+    pub fn apply_with(
         &self,
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         gaussians: &GaussiansBuffer<G>,
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
+        selection_expr: &SelectionExpr,
+        selection_buffer: &SelectionBuffer,
     ) {
         self.selection.evaluate(
             device,
             encoder,
-            &self.selection_expr,
-            &self.selection_buffer,
+            selection_expr,
+            selection_buffer,
             model_transform,
             gaussian_transform,
             gaussians,
@@ -157,6 +161,27 @@ impl<G: GaussianPod, M: Modifier<G>> Modifier<G> for SelectionModifier<G, M> {
             gaussians,
             model_transform,
             gaussian_transform,
+        );
+    }
+}
+
+impl<G: GaussianPod, M: Modifier<G>> Modifier<G> for SelectionModifier<G, M> {
+    fn apply(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
+    ) {
+        self.apply_with(
+            device,
+            encoder,
+            gaussians,
+            model_transform,
+            gaussian_transform,
+            &self.selection_expr,
+            &self.selection_buffer,
         );
     }
 }

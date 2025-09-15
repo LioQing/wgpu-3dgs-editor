@@ -107,6 +107,11 @@ impl SelectionExpr {
         Self::Buffer(buffer)
     }
 
+    /// Update the expression in place.
+    pub fn update_with(&mut self, f: impl FnOnce(Self) -> Self) {
+        *self = f(std::mem::take(self));
+    }
+
     /// Get the u32 associated with this expression's operation.
     ///
     /// The value returned is not the same as that returned by [`SelectionExpr::custom_op_index`],

@@ -44,6 +44,10 @@ name = "custom-modify-selection"
 path = "examples/custom_modify_selection.rs"
 doc-scrape-examples = true
 
+[package.metadata.docs.rs]
+all-features = true
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+
 [dependencies]
 wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
