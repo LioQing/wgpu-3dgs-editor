@@ -73,6 +73,24 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         model_transform: &ModelTransformBuffer,
         gaussian_transform: &GaussianTransformBuffer,
     ) -> Result<(), GaussiansBufferUpdateError> {
+        self.try_apply_with(encoder, gaussians, |encoder, modifier, gaussians| {
+            modifier.apply(
+                device,
+                encoder,
+                gaussians,
+                model_transform,
+                gaussian_transform,
+            );
+        })
+    }
+
+    /// Apply the modifier with a function.
+    pub fn try_apply_with(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        gaussians: &GaussiansBuffer<G>,
+        f: impl FnOnce(&mut wgpu::CommandEncoder, &M, &GaussiansBuffer<G>),
+    ) -> Result<(), GaussiansBufferUpdateError> {
         if self.original_gaussians.len() != gaussians.len() {
             return Err(GaussiansBufferUpdateError::CountMismatch {
                 count: gaussians.len(),
@@ -88,13 +106,7 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
             self.original_gaussians.buffer().size(),
         );
 
-        self.modifier.apply(
-            device,
-            encoder,
-            gaussians,
-            model_transform,
-            gaussian_transform,
-        );
+        f(encoder, &self.modifier, gaussians);
 
         Ok(())
     }
