@@ -36,6 +36,12 @@ You may read the documentation of the following traits and structs for more deta
 - [`SelectionModifier`]: A struct that applies selection and then modification, may be used to define custom selection modifiers.
 - [`NonDestructiveModifier`]: A struct that applies modifications without changing the original Gaussians, it achieves this by storing an original copy of the Gaussians.
 
+> [!TIP]
+>
+> The design principles of this crate are to provide modularity and flexibility to the end user of the API, which means exposing low-level WebGPU APIs. However, this means that you have to take care of your code when accessing low-level components. You risk breaking things at run-time if you don't handle them properly.
+>
+> If you do not want to take the risk, consider using the higher-level wrappers and avoid any instances of passing `wgpu` types into functions.
+
 ### Basic Editor
 
 You can use [`Editor`] and [`SelectionModifier::new_with_basic_modifier`] to manage the selection and modification of Gaussians with the built-in basic operations. Here's a simple example:

@@ -39,16 +39,16 @@ pub enum SelectionExpr {
     /// Complement of the selection.
     Complement(Box<SelectionExpr>),
     /// Apply a custom unary operation.
-    Unary(u32, Box<SelectionExpr>, Vec<wgpu::BindGroup>),
+    Unary(usize, Box<SelectionExpr>, Vec<wgpu::BindGroup>),
     /// Apply a custom binary operation.
     Binary(
         Box<SelectionExpr>,
-        u32,
+        usize,
         Box<SelectionExpr>,
         Vec<wgpu::BindGroup>,
     ),
     /// Create a selection.
-    Selection(u32, Vec<wgpu::BindGroup>),
+    Selection(usize, Vec<wgpu::BindGroup>),
     /// Directly use a selection buffer.
     Buffer(SelectionBuffer),
 }
@@ -88,17 +88,17 @@ impl SelectionExpr {
     }
 
     /// Create a new [`SelectionExpr::Unary`].
-    pub fn unary(self, op: u32, bind_groups: Vec<wgpu::BindGroup>) -> Self {
+    pub fn unary(self, op: usize, bind_groups: Vec<wgpu::BindGroup>) -> Self {
         Self::Unary(op, Box::new(self), bind_groups)
     }
 
     /// Create a new [`SelectionExpr::Binary`].
-    pub fn binary(self, op: u32, other: Self, bind_groups: Vec<wgpu::BindGroup>) -> Self {
+    pub fn binary(self, op: usize, other: Self, bind_groups: Vec<wgpu::BindGroup>) -> Self {
         Self::Binary(Box::new(self), op, Box::new(other), bind_groups)
     }
 
     /// Create a new [`SelectionExpr::Selection`].
-    pub fn selection(op: u32, bind_groups: Vec<wgpu::BindGroup>) -> Self {
+    pub fn selection(op: usize, bind_groups: Vec<wgpu::BindGroup>) -> Self {
         Self::Selection(op, bind_groups)
     }
 
@@ -127,9 +127,9 @@ impl SelectionExpr {
             SelectionExpr::Difference(_, _) => Some(2),
             SelectionExpr::SymmetricDifference(_, _) => Some(3),
             SelectionExpr::Complement(_) => Some(4),
-            SelectionExpr::Unary(op, _, _) => Some(*op + Self::CUSTOM_OP_START),
-            SelectionExpr::Binary(_, op, _, _) => Some(*op + Self::CUSTOM_OP_START),
-            SelectionExpr::Selection(op, _) => Some(*op + Self::CUSTOM_OP_START),
+            SelectionExpr::Unary(op, _, _) => Some(*op as u32 + Self::CUSTOM_OP_START),
+            SelectionExpr::Binary(_, op, _, _) => Some(*op as u32 + Self::CUSTOM_OP_START),
+            SelectionExpr::Selection(op, _) => Some(*op as u32 + Self::CUSTOM_OP_START),
             SelectionExpr::Buffer(_) => None,
             SelectionExpr::Identity => None,
         }
@@ -183,7 +183,7 @@ impl SelectionExpr {
     /// Get the custom operation index.
     ///
     /// This is the index of the custom operation in [`SelectionBundle::bundles`] vector.
-    pub fn custom_op_index(&self) -> Option<u32> {
+    pub fn custom_op_index(&self) -> Option<usize> {
         match self {
             SelectionExpr::Unary(op, _, _)
             | SelectionExpr::Binary(_, op, _, _)
@@ -203,7 +203,7 @@ impl SelectionExpr {
     }
 
     /// Get the custom operation index and bind groups for this expression.
-    pub fn custom_op_index_and_bind_groups(&self) -> Option<(u32, &Vec<wgpu::BindGroup>)> {
+    pub fn custom_op_index_and_bind_groups(&self) -> Option<(usize, &Vec<wgpu::BindGroup>)> {
         match self {
             SelectionExpr::Unary(op, _, bind_groups)
             | SelectionExpr::Binary(_, op, _, bind_groups)
@@ -577,9 +577,9 @@ impl<G: GaussianPod> SelectionBundle<G> {
                 resolver
             })
             .main_shader(
-                "wgpu_3dgs_editor::selection::primitive_ops"
+                "wgpu_3dgs_editor::selection::primitive"
                     .parse()
-                    .expect("selection::primitive_ops module path"),
+                    .expect("selection::primitive module path"),
             )
             .entry_point("main")
             .wesl_compile_options(wesl::CompileOptions {
