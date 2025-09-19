@@ -29,7 +29,7 @@ pub mod selection {
         source: "",
         submodules: &[
             &consts::MODULE,
-            &primitive_ops::MODULE,
+            &primitive::MODULE,
             &sphere::MODULE,
             &r#box::MODULE,
         ],
@@ -46,13 +46,13 @@ pub mod selection {
         };
     }
 
-    #[doc = concat!("```wgsl\n", include_str!("shader/selection/primitive_ops.wesl"), "\n```")]
-    pub mod primitive_ops {
+    #[doc = concat!("```wgsl\n", include_str!("shader/selection/primitive.wesl"), "\n```")]
+    pub mod primitive {
         use super::PkgModule;
 
         pub const MODULE: PkgModule = PkgModule {
-            name: "primitive_ops",
-            source: include_str!("shader/selection/primitive_ops.wesl"),
+            name: "primitive",
+            source: include_str!("shader/selection/primitive.wesl"),
             submodules: &[],
         };
     }
