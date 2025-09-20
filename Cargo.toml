@@ -12,7 +12,6 @@ include = [
     "LICENSE-APACHE",
     "CHANGELOG.md",
     "Cargo.toml",
-    "Cargo.lock",
     "src/**/*",
 ]
 repository = "https://github.com/LioQing/wgpu-3dgs-editor"
@@ -49,7 +48,7 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [dependencies]
-wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
+wgpu-3dgs-core = { path = "../wgpu-3dgs-core", version = "0.4" }
 
 bytemuck = { version = "1.23", features = [
     "derive",
