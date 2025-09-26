@@ -46,7 +46,7 @@ You may read the documentation of the following traits and structs for more deta
 
 You can use [`Editor`] and [`SelectionModifier::new_with_basic_modifier`] to manage the selection and modification of Gaussians with the built-in basic operations. Here's a simple example:
 
-```rust
+```rust ignore
 use wgpu_3dgs_editor as gs;
 
 // Setup wgpu...
@@ -60,16 +60,17 @@ let gaussians = gs::core::Gaussians::read_ply(&mut reader).unwrap();
 let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
 
 // Create a basic selection modifier with a box and a sphere selection bundle
-let mut basic_selection_modifier = gs::SelectionModifier::<GaussianPod, _>::new_with_basic_modifier(
-    &device,
-    &editor.gaussians_buffer,
-    &editor.model_transform_buffer,
-    &editor.gaussian_transform_buffer,
-    vec![
-        gs::SelectionBundle::create_box_bundle::<GaussianPod>(&device),
-        gs::SelectionBundle::create_sphere_bundle::<GaussianPod>(&device),
-    ],
-);
+let mut basic_selection_modifier =
+    gs::SelectionModifier::<GaussianPod, _>::new_with_basic_modifier(
+        &device,
+        &editor.gaussians_buffer,
+        &editor.model_transform_buffer,
+        &editor.gaussian_transform_buffer,
+        vec![
+            gs::SelectionBundle::create_box_bundle::<GaussianPod>(&device),
+            gs::SelectionBundle::create_sphere_bundle::<GaussianPod>(&device),
+        ],
+    );
 
 // Create the buffer and bind group for the box selection's position, rotation, and scale
 let box_selection_buffer = gs::InvTransformBuffer::new(&device);
