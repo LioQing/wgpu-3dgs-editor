@@ -25,52 +25,136 @@ use crate::{
 /// There are many ways to use this but the recommended way is to implement this trait for a closure
 /// which dispatch a [`ComputeBundle`].
 ///
-/// ```rust
+/// ```rust no_run
+/// # use pollster::FutureExt;
+/// #
+/// # async {
+/// # use wgpu_3dgs_editor::{
+/// #     Editor, MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, Modifier,
+/// #     core::{
+/// #         self, BufferWrapper, GaussianPod as _, GaussianTransformBuffer,
+/// #         GaussiansBuffer, ModelTransformBuffer, glam::*,
+/// #     },
+/// #     shader,
+/// # };
+/// #
+/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// #
+/// # let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+/// #
+/// # let adapter = instance
+/// #     .request_adapter(&wgpu::RequestAdapterOptions::default())
+/// #     .await
+/// #     .expect("adapter");
+/// #
+/// # let (device, _queue) = adapter
+/// #     .request_device(&wgpu::DeviceDescriptor {
+/// #         label: Some("Device"),
+/// #         required_features: wgpu::Features::empty(),
+/// #         required_limits: adapter.limits(),
+/// #         memory_hints: wgpu::MemoryHints::default(),
+/// #         trace: wgpu::Trace::Off,
+/// #     })
+/// #     .await
+/// #     .expect("device");
+/// #
+/// # const MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+/// #     wgpu::BindGroupLayoutDescriptor {
+/// #         label: Some("My Custom Bind Group Layout"),
+/// #         entries: &[wgpu::BindGroupLayoutEntry {
+/// #             binding: 0,
+/// #             visibility: wgpu::ShaderStages::COMPUTE,
+/// #             ty: wgpu::BindingType::Buffer {
+/// #                 ty: wgpu::BufferBindingType::Uniform,
+/// #                 has_dynamic_offset: false,
+/// #                 min_binding_size: None,
+/// #             },
+/// #             count: None,
+/// #         }],
+/// #     };
+/// #
+/// # let my_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+/// #     label: Some("My Buffer"),
+/// #     size: 4,
+/// #     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+/// #     mapped_at_creation: false,
+/// # });
+/// #
+/// // Create an editor that holds the buffers for the Gaussians and will apply the modifier
+/// let editor = Editor::new(
+///     &device,
+///     &core::Gaussians {
+///         gaussians: vec![core::Gaussian {
+///             rot: Quat::IDENTITY,
+///             pos: Vec3::ZERO,
+///             color: U8Vec4::ZERO,
+///             sh: [Vec3::ZERO; 15],
+///             scale: Vec3::ONE,
+///         }],
+///     },
+/// );
+///
 /// // Create the modifier compute bundle
-/// let my_modifier_bundle = ComputeBundleBuilder::new()
+/// let my_modifier_bundle = core::ComputeBundleBuilder::new()
 ///     .label("My Modifier")
 ///     .bind_group_layouts([
-///         &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, // For accessing Gaussians and transforms
-///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR, // Put your custom bind group layout here.
+///         // For accessing Gaussians and transforms
+///         &MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+///         // Your custom bind group layout here
+///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR,
 ///     ])
 ///     .resolver({
-///         let mut resolver = wesl::StandardResolver::new("path/to/my/folder/containing/wesl");
-///         resolver.add_package(&core::shader::PACKAGE); // Required for using core buffer structs.
-///         resolver.add_package(&shader::PACKAGE); // Optionally add this for some utility functions.
+///         let mut resolver =
+///             wesl::StandardResolver::new("path/to/my/folder/containing/wesl");
+///         // Required for using core buffer structs.
+///         resolver.add_package(&core::shader::PACKAGE);
+///         // Optionally add this for some utility functions.
+///         resolver.add_package(&shader::PACKAGE);
 ///         resolver
 ///     })
 ///     .main_shader("package::my_wesl_filename".parse().unwrap())
 ///     .entry_point("main")
 ///     .wesl_compile_options(wesl::CompileOptions {
-///         features: G::wesl_features(), // Required for enabling the correct features for core struct.
+///         // Required for enabling the correct features for core struct.
+///         features: GaussianPod::wesl_features(),
 ///         ..Default::default()
 ///     })
 ///     .build(
 ///         &device,
 ///         [
 ///             vec![
-///                 gaussians_buffer.buffer().as_entire_binding(),
-///                 model_transform_buffer.buffer().as_entire_binding(),
-///                 gaussian_transform_buffer.buffer().as_entire_binding(),
+///                 editor.gaussians_buffer.buffer().as_entire_binding(),
+///                 editor.model_transform_buffer.buffer().as_entire_binding(),
+///                 editor.gaussian_transform_buffer.buffer().as_entire_binding(),
 ///             ],
-///             vec![ /* Your custom bind group resources */ ],
+///             vec![my_buffer.buffer().as_entire_binding()],
 ///         ],
 ///     )
 ///     .map_err(|e| log::error!("{e}"))
 ///     .expect("my modifier bundle");
 ///
 /// // Create the modifier closure
-/// let my_modifier = |device: &wgpu::Device,
-///                    encoder: &mut wgpu::CommandEncoder,
-///                    gaussians: &GaussiansBuffer<G>,
-///                    model_transform: &ModelTransformBuffer,
-///                    gaussian_transform: &GaussianTransformBuffer| {
-///     my_modifier_bundle.dispatch(encoder, gaussians.len() as u32);
-/// };
+/// // This function signature implements Modifier by default
+/// let my_modifier =
+///     |_device: &wgpu::Device,
+///         encoder: &mut wgpu::CommandEncoder,
+///         gaussians: &GaussiansBuffer<GaussianPod>,
+///         _model_transform: &ModelTransformBuffer,
+///         _gaussian_transform: &GaussianTransformBuffer| {
+///         my_modifier_bundle.dispatch(encoder, gaussians.len() as u32);
+///     };
 ///
-/// // Apply the modifier using an editor as an example
-/// let editor = Editor::new(&device, &gaussians);
-/// editor.apply(&device, &mut encoder, [&my_modifier as &dyn gs::Modifier<GaussianPod>]);
+/// # let mut encoder =
+/// #     device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+///
+/// // Apply the modifier using the editor
+/// editor.apply(
+///     &device,
+///     &mut encoder,
+///     [&my_modifier as &dyn Modifier<GaussianPod>],
+/// );
+/// # }
+/// # .block_on();
 /// ```
 ///
 /// ## Shader Format

@@ -23,19 +23,77 @@ use crate::{
 /// The creation expects a modifier factory function instead of a modifier,
 /// so that the modifier can be created with a reference to the selection buffer.
 ///
-/// ```rust
+/// ```rust no_run
+/// # use pollster::FutureExt;
+/// #
+/// # async {
+/// # use wgpu_3dgs_editor::{
+/// #     Editor, Modifier, SelectionBuffer, SelectionBundle, SelectionModifier,
+/// #     core::{
+/// #         self, BufferWrapper, glam::*,
+/// #     },
+/// # };
+/// #
+/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// #
+/// # let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+/// #
+/// # let adapter = instance
+/// #     .request_adapter(&wgpu::RequestAdapterOptions::default())
+/// #     .await
+/// #     .expect("adapter");
+/// #
+/// # let (device, _queue) = adapter
+/// #     .request_device(&wgpu::DeviceDescriptor {
+/// #         label: Some("Device"),
+/// #         required_features: wgpu::Features::empty(),
+/// #         required_limits: adapter.limits(),
+/// #         memory_hints: wgpu::MemoryHints::default(),
+/// #         trace: wgpu::Trace::Off,
+/// #     })
+/// #     .await
+/// #     .expect("device");
+/// #
+/// // Create an editor that holds the buffers for the Gaussians and will apply the modifier
+/// let editor = Editor::new(
+///     &device,
+///     &core::Gaussians {
+///         gaussians: vec![core::Gaussian {
+///             rot: Quat::IDENTITY,
+///             pos: Vec3::ZERO,
+///             color: U8Vec4::ZERO,
+///             sh: [Vec3::ZERO; 15],
+///             scale: Vec3::ONE,
+///         }],
+///     },
+/// );
+///
 /// // Create your selection bundles
 /// let selection_bundles = vec![
-///   SelectionBundle::<GaussianPod>::create_sphere_bundle(&device), // The built-in sphere selection bundle as example
+///     // The built-in sphere selection bundle as example
+///     SelectionBundle::<GaussianPod>::create_sphere_bundle(&device),
 /// ];
 ///
-/// struct MyCustomModifier(ComputeBundle);
+/// struct MyCustomModifier(core::ComputeBundle);
 ///
 /// impl MyCustomModifier {
-///     pub fn new(device: &wgpu::Device, /* Your buffers */, selection: &SelectionBuffer) -> Self {
+///     pub fn new(
+///         device: &wgpu::Device,
+///         // My buffers,
+///         selection: &SelectionBuffer,
+///     ) -> Self {
 ///         // Build your compute bundle here,
 ///         // and include the selection buffer to only modify selected Gaussians
-///         let compute_bundle = ComputeBundleBuilder::new().build(&device, /* Your buffers */);
+///         let compute_bundle = core::ComputeBundleBuilder::new()
+///             // Configure the modifier compute bundle here
+///             .build(
+///                 &device,
+///                 [
+///                     [selection.buffer().as_entire_binding()].to_vec(),
+///                     [/* Your buffers */].to_vec(),
+///                 ],
+///             )
+///             .unwrap();
 ///         Self(compute_bundle)
 ///     }
 /// }
@@ -43,11 +101,11 @@ use crate::{
 /// impl Modifier<GaussianPod> for MyCustomModifier {
 ///     fn apply(
 ///         &self,
-///         device: &wgpu::Device,
+///         _device: &wgpu::Device,
 ///         encoder: &mut wgpu::CommandEncoder,
-///         gaussians: &GaussiansBuffer<GaussianPod>,
-///         model_transform: &ModelTransformBuffer,
-///         gaussian_transform: &GaussianTransformBuffer,
+///         gaussians: &core::GaussiansBuffer<GaussianPod>,
+///         _model_transform: &core::ModelTransformBuffer,
+///         _gaussian_transform: &core::GaussianTransformBuffer,
 ///     ) {
 ///         self.0.dispatch(encoder, gaussians.len() as u32);
 ///     }
@@ -55,41 +113,103 @@ use crate::{
 ///
 /// let selection_modifier = SelectionModifier::new(
 ///     &device,
-///     &gaussians_buffer,
+///     &editor.gaussians_buffer,
 ///     selection_bundles,
-///     |selection_buffer| { // The factory closure
-///         BasicModifier::new_with_selection(
-///             device,
+///     |selection_buffer| {
+///         // The factory closure
+///         MyCustomModifier::new(
+///             &device,
 ///             // Your buffers,
 ///             selection_buffer,
 ///         )
 ///     },
 /// );
+/// # }
+/// # .block_on();
 /// ```
 ///
 /// Alternatively, you can use a modifier closure instead of a struct (but be reminded this could
 /// harm readability of your code).
 ///
-/// ```rust
-/// let selection_modifier = SelectionModifier::<GaussianPod>::new(
+/// ```rust no_run
+/// # use pollster::FutureExt;
+/// #
+/// # async {
+/// # use wgpu_3dgs_editor::{
+/// #     Editor, Modifier, SelectionBuffer, SelectionBundle, SelectionModifier,
+/// #     core::{
+/// #         self, BufferWrapper, glam::*,
+/// #     },
+/// # };
+/// #
+/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// #
+/// # let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+/// #
+/// # let adapter = instance
+/// #     .request_adapter(&wgpu::RequestAdapterOptions::default())
+/// #     .await
+/// #     .expect("adapter");
+/// #
+/// # let (device, _queue) = adapter
+/// #     .request_device(&wgpu::DeviceDescriptor {
+/// #         label: Some("Device"),
+/// #         required_features: wgpu::Features::empty(),
+/// #         required_limits: adapter.limits(),
+/// #         memory_hints: wgpu::MemoryHints::default(),
+/// #         trace: wgpu::Trace::Off,
+/// #     })
+/// #     .await
+/// #     .expect("device");
+/// #
+/// # let editor = Editor::new(
+/// #     &device,
+/// #     &core::Gaussians {
+/// #         gaussians: vec![core::Gaussian {
+/// #             rot: Quat::IDENTITY,
+/// #             pos: Vec3::ZERO,
+/// #             color: U8Vec4::ZERO,
+/// #             sh: [Vec3::ZERO; 15],
+/// #             scale: Vec3::ONE,
+/// #         }],
+/// #     },
+/// # );
+/// #
+/// # let selection_bundles = vec![
+/// #     // The built-in sphere selection bundle as example
+/// #     SelectionBundle::<GaussianPod>::create_sphere_bundle(&device),
+/// # ];
+/// #
+/// let selection_modifier = SelectionModifier::new(
 ///     &device,
-///     &gaussians_buffer,
+///     &editor.gaussians_buffer,
 ///     selection_bundles,
-///     |selection_buffer| { // The factory closure
+///     |selection_buffer| {
+///         // The factory closure
 ///         // Build your compute bundle here,
 ///         // and include the selection buffer to only modify selected Gaussians
-///         let modifier_bundle = ComputeBundleBuilder::new().build(&device, /* Your buffers */);
+///         let modifier_bundle = core::ComputeBundleBuilder::new()
+///             .build(
+///                 &device,
+///                 [
+///                     [selection_buffer.buffer().as_entire_binding()].to_vec(),
+///                     [/* Your buffers */].to_vec(),
+///                 ],
+///             )
+///             .unwrap();
 ///
 ///         // This function signature has blanket impl of the modifier trait
 ///         move |_device: &wgpu::Device,
-///               encoder: &mut wgpu::CommandEncoder,
-///               gaussians: &gs::core::GaussiansBuffer<GaussianPod>,
-///               _model_transform: &gs::core::ModelTransformBuffer,
-///               _gaussian_transform: &gs::core::GaussianTransformBuffer| {
+///                 encoder: &mut wgpu::CommandEncoder,
+///                 gaussians: &core::GaussiansBuffer<GaussianPod>,
+///                 _model_transform: &core::ModelTransformBuffer,
+///                 _gaussian_transform: &core::GaussianTransformBuffer| {
 ///             modifier_bundle.dispatch(encoder, gaussians.len() as u32);
 ///         }
 ///     },
 /// );
+/// # }
+/// # .block_on();
 /// ``````
 #[derive(Debug)]
 pub struct SelectionModifier<G: GaussianPod, M: Modifier<G>> {

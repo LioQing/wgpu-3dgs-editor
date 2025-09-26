@@ -225,24 +225,99 @@ impl SelectionExpr {
 /// It is recommended to use [`ComputeBundleBuilder`] to create the custom operation bundles,
 /// and build them using [`ComputeBundleBuilder::build_without_bind_groups`].
 ///
-/// ```rust
+/// ```rust no_run
+/// # use pollster::FutureExt;
+/// #
+/// # async {
+/// # use wgpu_3dgs_editor::{
+/// #     Editor, MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, Modifier, SelectionBuffer,
+/// #     SelectionBundle, SelectionExpr,
+/// #     core::{
+/// #         self, BufferWrapper, GaussianPod as _, GaussianTransformBuffer,
+/// #         GaussiansBuffer, ModelTransformBuffer, glam::*,
+/// #     },
+/// #     shader,
+/// # };
+/// #
+/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// #
+/// # let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+/// #
+/// # let adapter = instance
+/// #     .request_adapter(&wgpu::RequestAdapterOptions::default())
+/// #     .await
+/// #     .expect("adapter");
+/// #
+/// # let (device, _queue) = adapter
+/// #     .request_device(&wgpu::DeviceDescriptor {
+/// #         label: Some("Device"),
+/// #         required_features: wgpu::Features::empty(),
+/// #         required_limits: adapter.limits(),
+/// #         memory_hints: wgpu::MemoryHints::default(),
+/// #         trace: wgpu::Trace::Off,
+/// #     })
+/// #     .await
+/// #     .expect("device");
+/// #
+/// # const MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+/// #     wgpu::BindGroupLayoutDescriptor {
+/// #         label: Some("My Custom Bind Group Layout"),
+/// #         entries: &[wgpu::BindGroupLayoutEntry {
+/// #             binding: 0,
+/// #             visibility: wgpu::ShaderStages::COMPUTE,
+/// #             ty: wgpu::BindingType::Buffer {
+/// #                 ty: wgpu::BufferBindingType::Uniform,
+/// #                 has_dynamic_offset: false,
+/// #                 min_binding_size: None,
+/// #             },
+/// #             count: None,
+/// #         }],
+/// #     };
+/// #
+/// # let my_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+/// #     label: Some("My Buffer"),
+/// #     size: 4,
+/// #     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+/// #     mapped_at_creation: false,
+/// # });
+/// #
+/// # let my_existing_selection_buffer = SelectionBuffer::new(&device, 1024);
+/// #
+/// // Create an editor that holds the buffers for the Gaussians
+/// let editor = Editor::new(
+///     &device,
+///     &core::Gaussians {
+///         gaussians: vec![core::Gaussian {
+///             rot: Quat::IDENTITY,
+///             pos: Vec3::ZERO,
+///             color: U8Vec4::ZERO,
+///             sh: [Vec3::ZERO; 15],
+///             scale: Vec3::ONE,
+///         }],
+///     },
+/// );
+///
 /// // Create the selection custom operation compute bundle
-/// let my_selection_custom_op_bundle = ComputeBundleBuilder::new()
+/// let my_selection_custom_op_bundle = core::ComputeBundleBuilder::new()
 ///     .label("My Selection")
 ///     .bind_group_layouts([
-///         &SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
-///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR, // Put your custom bind group layout here.
+///         &SelectionBundle::<GaussianPod>::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR,
+///         &MY_CUSTOM_BIND_GROUP_LAYOUT_DESCRIPTOR,
 ///     ])
 ///     .resolver({
-///         let mut resolver = wesl::PkgResolver::new();
-///         resolver.add_package(&core::shader::PACKAGE); // Required for using core buffer structs.
-///         resolver.add_package(&shader::PACKAGE); // Optionally add this for some utility functions.
+///         let mut resolver =
+///             wesl::StandardResolver::new("path/to/my/folder/containing/wesl");
+///         // Required for using core buffer structs.
+///         resolver.add_package(&core::shader::PACKAGE);
+///         // Optionally add this for some utility functions.
+///         resolver.add_package(&shader::PACKAGE);
 ///         resolver
 ///     })
-///     .main_shader("path::to::my::wesl::module".parse().unwrap())
+///     .main_shader("package::my_wesl_filename".parse().unwrap())
 ///     .entry_point("main")
 ///     .wesl_compile_options(wesl::CompileOptions {
-///         features: G::wesl_features(), // Required for enabling the correct features for core structs.
+///         // Required for enabling the correct features for core struct.
+///         features: GaussianPod::wesl_features(),
 ///         ..Default::default()
 ///     })
 ///     .build_without_bind_groups(&device)
@@ -250,31 +325,35 @@ impl SelectionExpr {
 ///     .expect("my selection custom op bundle");
 ///
 /// // Create the selection bundle
-/// let selection_bundle = SelectionBundle::<GaussianPod>::new(
-///     &device,
-///     vec![my_selection_custom_op_bundle],
-/// );
+/// let selection_bundle =
+///     SelectionBundle::<GaussianPod>::new(&device, vec![my_selection_custom_op_bundle]);
 ///
 /// // Create the bind group for your custom operation
 /// let my_selection_custom_op_bind_group = selection_bundle.bundles[0]
 ///     .create_bind_group(
 ///         &device,
-///         1, // Index 0 is the Gaussians buffer, so remember to start from 1 for your bind groups
-///         [my_selection_custom_op_buffer.buffer().as_entire_binding()], // Your custom bind group resources
+///         1, // Index 0 is always the Gaussians buffer
+///         [my_buffer.buffer().as_entire_binding()],
 ///     )
-///     .unwrap()
+///     .unwrap();
 ///
 /// // Create the selection expression
-/// let selection_expr = gs::SelectionExpr::selection(
+/// let selection_expr = SelectionExpr::selection(
 ///     0, // The bundle index for your custom operation in the selection bundle
 ///     vec![my_selection_custom_op_bind_group],
 /// )
-/// .union( // Combine with other selection expressions using different functions
-///     gs::SelectionExpr::Buffer(my_existing_selection_buffer) // An existing selection buffer for example
+/// .union(
+///     // Combine with other selection expressions using different functions
+///     // Here is an existing selection buffer for example
+///     SelectionExpr::Buffer(my_existing_selection_buffer),
 /// );
 ///
 /// // Create a selection buffer for the result
-/// let dest_selection_buffer = SelectionBuffer::new(&device, gaussians_buffer.len() as u32);
+/// let dest_selection_buffer =
+///     SelectionBuffer::new(&device, editor.gaussians_buffer.len() as u32);
+///
+/// # let mut encoder =
+/// #     device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 ///
 /// // Evaluate the selection expression
 /// selection_bundle.evaluate(
@@ -282,10 +361,12 @@ impl SelectionExpr {
 ///     &mut encoder,
 ///     &selection_expr,
 ///     &dest_selection_buffer,
-///     &model_transform,
-///     &gaussian_transform,
-///     &gaussians_buffer,
+///     &editor.model_transform_buffer,
+///     &editor.gaussian_transform_buffer,
+///     &editor.gaussians_buffer,
 /// );
+/// # }
+/// # .block_on();
 /// ```
 ///
 /// ## Shader Format
