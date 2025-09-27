@@ -57,7 +57,7 @@ $badge_color = if ($percentage -ge 80) { "brightgreen" } elseif ($percentage -ge
     `"label`": `"coverage`",
     `"message`": `"$badge_percentage%`",
     `"color`": `"$badge_color`"
-}" > "$BASE_DIR/badge.json"
+}" | Out-File -FilePath "$BASE_DIR/badge.json" -Encoding ascii
 
 echo "Cleaning up"
 rm "$BASE_DIR/output.ply"
