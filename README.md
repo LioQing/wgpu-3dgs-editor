@@ -4,7 +4,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/wgpu-3dgs-editor)](https://crates.io/crates/wgpu-3dgs-editor)
 [![Docs.rs](https://img.shields.io/docsrs/wgpu-3dgs-editor)](https://docs.rs/wgpu-3dgs-editor/latest/wgpu_3dgs_editor)
-[![Coverage](https://raw.githubusercontent.com/LioQing/wgpu-3dgs-editor/refs/heads/master/coverage/badge.json)](https://github.com/LioQing/wgpu-3dgs-editor/tree/master/coverage)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLioQing%2Fwgpu-3dgs-editor%2Frefs%2Fheads%2Fmaster%2Fcoverage%2Fbadge.json
+)](https://github.com/LioQing/wgpu-3dgs-editor/tree/master/coverage)
 [![License](https://img.shields.io/crates/l/wgpu-3dgs-editor)](https://crates.io/crates/wgpu-3dgs-editor)
 
 ## Overview
