@@ -1,3 +1,11 @@
+//! This example modifies the entire model using [`BasicModifier`](wgpu_3dgs_editor::BasicModifier).
+//!
+//! For example, to decrease the contrast of the model:
+//!
+//! ```sh
+//! cargo run --example modify -- -m "path/to/model.ply" --contrast "-1.0"
+//! ```
+
 use clap::Parser;
 use glam::*;
 

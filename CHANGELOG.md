@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 - Unreleased
+
+### Added
+
+- 📑 Add example modules documentations.
+- 🧪 Add coverage script and reports.
+
 ## [0.4.0](https://crates.io/crates/wgpu-3dgs-editor/0.4.0) - 2025-09-20
 
 ### Added
