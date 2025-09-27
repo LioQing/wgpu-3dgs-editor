@@ -2932,6 +2932,8 @@ dependencies = [
 [[package]]
 name = "wgpu-3dgs-core"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6c1503a16a2ac911e4816f2e24e9363e56388069a3dda65f058098f096fbcdf"
 dependencies = [
  "bytemuck",
  "glam",

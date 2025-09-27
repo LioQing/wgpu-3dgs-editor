@@ -1,3 +1,15 @@
+//! This example selects parts of the model then apply a modifier using
+//! [`SelectionModifier::new_with_basic_modifier`](wgpu_3dgs_editor::SelectionModifier::new_with_basic_modifier).
+//!
+//! For example, to select a sphere at (0.5, 1.0, 0.5) with scale (1, 1, 1),
+//! repeat the selection 2 times with an offset (2, 0, 0), and decrease the contrast of the selected Gaussians:
+//!
+//! ```sh
+//! cargo run --example modify-selection -- \
+//!     -m "path/to/model.ply" \
+//!     -p 0.5 1.0 0.5 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0 --contrast "-1.0"
+//! ```
+
 use clap::{Parser, ValueEnum};
 use glam::*;
 

@@ -1,3 +1,18 @@
+//! This example selects parts of the model, then applies a custom modifier
+//! using [`SelectionModifier`](wgpu_3dgs_editor::SelectionModifier) and a user-defined
+//! compute pipeline built with [`ComputeBundleBuilder`](wgpu_3dgs_editor::core::ComputeBundleBuilder).
+//!
+//! The custom selection is a cylinder aligned with the z-axis, centered at `pos` with a given `radius`.
+//!
+//! The custom modifier shifts the hue of the selected Gaussians according to their x and y coordinates
+//! about the axis of the cylinder selection.
+//!
+//! For example, to use the defaults (pos = (0, 0, 0), radius = 3.0) and apply the custom modifier:
+//!
+//! ```sh
+//! cargo run --example custom-modify-selection -- -m "path/to/model.ply"
+//! ```
+
 use clap::{Parser, ValueEnum};
 use glam::*;
 

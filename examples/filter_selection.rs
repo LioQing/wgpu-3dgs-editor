@@ -1,3 +1,15 @@
+//! This example selects parts of the model, then filters the model to keep only the selected parts
+//! using [`SelectionBundle`](wgpu_3dgs_editor::SelectionBundle) and [`SelectionExpr`](wgpu_3dgs_editor::SelectionExpr).
+//!
+//! For example, to select a sphere at (0.5, 1.0, 0.5) with scale (1, 1, 1),
+//! repeat the selection 2 times with an offset (2, 0, 0), and keep only the selected Gaussians:
+//!
+//! ```sh
+//! cargo run --example filter-selection -- \
+//!     -m "path/to/model.ply" \
+//!     -p 0.5 1.0 0.5 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0
+//! ```
+
 use clap::{Parser, ValueEnum};
 use glam::*;
 
