@@ -24,9 +24,7 @@ use crate::{
 /// so that the modifier can be created with a reference to the selection buffer.
 ///
 /// ```rust no_run
-/// # use pollster::FutureExt;
-/// #
-/// # async {
+/// # pollster::block_on(async {
 /// # use wgpu_3dgs_editor::{
 /// #     Editor, Modifier, SelectionBuffer, SelectionBundle, SelectionModifier,
 /// #     core::{
@@ -124,17 +122,14 @@ use crate::{
 ///         )
 ///     },
 /// );
-/// # }
-/// # .block_on();
+/// # });
 /// ```
 ///
 /// Alternatively, you can use a modifier closure instead of a struct (but be reminded this could
 /// harm readability of your code).
 ///
 /// ```rust no_run
-/// # use pollster::FutureExt;
-/// #
-/// # async {
+/// # pollster::block_on(async {
 /// # use wgpu_3dgs_editor::{
 /// #     Editor, Modifier, SelectionBuffer, SelectionBundle, SelectionModifier,
 /// #     core::{
@@ -208,8 +203,7 @@ use crate::{
 ///         }
 ///     },
 /// );
-/// # }
-/// # .block_on();
+/// # });
 /// ``````
 #[derive(Debug)]
 pub struct SelectionModifier<G: GaussianPod, M: Modifier<G>> {

@@ -226,9 +226,7 @@ impl SelectionExpr {
 /// and build them using [`ComputeBundleBuilder::build_without_bind_groups`].
 ///
 /// ```rust no_run
-/// # use pollster::FutureExt;
-/// #
-/// # async {
+/// # pollster::block_on(async {
 /// # use wgpu_3dgs_editor::{
 /// #     Editor, MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, Modifier, SelectionBuffer,
 /// #     SelectionBundle, SelectionExpr,
@@ -365,8 +363,7 @@ impl SelectionExpr {
 ///     &editor.gaussian_transform_buffer,
 ///     &editor.gaussians_buffer,
 /// );
-/// # }
-/// # .block_on();
+/// # });
 /// ```
 ///
 /// ## Shader Format
