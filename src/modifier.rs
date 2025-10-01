@@ -26,9 +26,7 @@ use crate::{
 /// which dispatch a [`ComputeBundle`].
 ///
 /// ```rust no_run
-/// # use pollster::FutureExt;
-/// #
-/// # async {
+/// # pollster::block_on(async {
 /// # use wgpu_3dgs_editor::{
 /// #     Editor, MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR, Modifier,
 /// #     core::{
@@ -153,8 +151,7 @@ use crate::{
 ///     &mut encoder,
 ///     [&my_modifier as &dyn Modifier<GaussianPod>],
 /// );
-/// # }
-/// # .block_on();
+/// # });
 /// ```
 ///
 /// ## Shader Format
