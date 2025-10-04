@@ -677,13 +677,18 @@ impl<G: GaussianPod> BasicModifier<G, WithSelection> {
 impl<G: GaussianPod, S> Modifier<G> for BasicModifier<G, S> {
     fn apply(
         &self,
-        _device: &wgpu::Device,
+        device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
         gaussians: &GaussiansBuffer<G>,
-        _model_transform: &ModelTransformBuffer,
-        _gaussian_transform: &GaussianTransformBuffer,
+        model_transform: &ModelTransformBuffer,
+        gaussian_transform: &GaussianTransformBuffer,
     ) {
-        self.modifier
-            .apply_with_count(encoder, gaussians.len() as u32);
+        self.modifier.apply(
+            device,
+            encoder,
+            gaussians,
+            model_transform,
+            gaussian_transform,
+        );
     }
 }
