@@ -33,7 +33,9 @@ impl SelectionBuffer {
 
 impl BufferWrapper for SelectionBuffer {
     const DEFAULT_USAGES: wgpu::BufferUsages = wgpu::BufferUsages::from_bits_retain(
-        wgpu::BufferUsages::STORAGE.bits() | wgpu::BufferUsages::COPY_SRC.bits(),
+        wgpu::BufferUsages::STORAGE.bits()
+            | wgpu::BufferUsages::COPY_DST.bits()
+            | wgpu::BufferUsages::COPY_SRC.bits(),
     );
 
     fn buffer(&self) -> &wgpu::Buffer {
@@ -44,6 +46,12 @@ impl BufferWrapper for SelectionBuffer {
 impl From<SelectionBuffer> for wgpu::Buffer {
     fn from(wrapper: SelectionBuffer) -> Self {
         wrapper.0
+    }
+}
+
+impl From<wgpu::Buffer> for SelectionBuffer {
+    fn from(buffer: wgpu::Buffer) -> Self {
+        Self(buffer)
     }
 }
 

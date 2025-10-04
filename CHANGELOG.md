@@ -4,8 +4,14 @@
 
 ### Added
 
+- 🟰 Add Clone for modifier buffers.
 - 📑 Add example modules documentations.
-- 🧪 Add coverage script and reports.
+- ✅ Add coverage script and reports.
+
+### Changed
+
+- 🔨 `SelectionBuffer::DEFAULT_USAGES` now includes `COPY_DST`.
+- 🐛 Fix `SelectionExpr::as_u32` mistakenly swapped `Difference` and `SymmetricDifference`.
 
 ## [0.4.0](https://crates.io/crates/wgpu-3dgs-editor/0.4.0) - 2025-09-20
 

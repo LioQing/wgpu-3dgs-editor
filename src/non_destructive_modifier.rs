@@ -10,6 +10,7 @@ use crate::{
 ///
 /// This modifier stores a copy of the original Gaussians, whenever it is applied, it first
 /// copies original Gaussians to the destination Gaussians buffer, then applies the inner modifier.
+#[derive(Debug)]
 pub struct NonDestructiveModifier<G: GaussianPod, M: Modifier<G>> {
     pub modifier: M,
     pub original_gaussians: GaussiansBuffer<G>,
@@ -52,9 +53,7 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         );
 
         queue.submit(Some(encoder.finish()));
-        device.poll(wgpu::PollType::Wait).inspect_err(|e| {
-            log::error!("Failed to poll device: {e:?}");
-        })?;
+        device.poll(wgpu::PollType::Wait)?;
 
         Ok(Self {
             modifier,
@@ -85,6 +84,9 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
     }
 
     /// Apply the modifier with a function.
+    ///
+    /// This is convenient when you are not using the [`Modifier::apply`] function, and instead
+    /// want to use other functions to apply the modifier.
     pub fn try_apply_with(
         &self,
         encoder: &mut wgpu::CommandEncoder,

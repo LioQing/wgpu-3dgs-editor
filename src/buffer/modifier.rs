@@ -7,7 +7,7 @@ use crate::core::{self, BufferWrapper, FixedSizeBufferWrapper};
 ///
 /// This buffer holds the data for basic color modifications, including RGB override or
 /// HSV modifications, alpha, contrast, exposure, and gamma adjustments.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BasicColorModifiersBuffer(wgpu::Buffer);
 
 impl BasicColorModifiersBuffer {
@@ -158,7 +158,7 @@ impl Default for BasicColorModifiersPod {
 }
 
 /// The transform flags buffer for the [`BasicModifierBundle`](crate::BasicModifierBundle).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TransformFlagsBuffer(wgpu::Buffer);
 
 impl TransformFlagsBuffer {
@@ -219,7 +219,7 @@ bitflags::bitflags! {
 /// The scale rotation buffer for the [`BasicModifierBundle`](crate::BasicModifierBundle).
 ///
 /// This buffer holds the per Gaussian rotation and scale modification data.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RotScaleBuffer(wgpu::Buffer);
 
 impl RotScaleBuffer {

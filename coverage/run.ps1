@@ -30,9 +30,8 @@ cargo llvm-cov run --example custom-modify-selection -- -m "$BASE_DIR/model.ply"
 # echo "Running doctests"
 # cargo llvm-cov --no-report --doctests
 
-# No tests for now
-# echo "Running tests"
-# cargo llvm-cov --no-report nextest
+echo "Running tests"
+cargo llvm-cov --no-report nextest
 
 echo "Generating coverage report"
 cargo llvm-cov report --lcov --output-path "$LCOV_PATH"

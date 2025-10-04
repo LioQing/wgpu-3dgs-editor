@@ -40,7 +40,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     } else if op == consts::op_symmetric_difference {
         atomicXor(&dest[index], source[index]);
     } else if op == consts::op_difference {
-        atomicAnd(&dest[index], ~source[index]);
+        atomicStore(&dest[index], source[index] & ~atomicLoad(&dest[index]));
     } else if op == consts::op_complement {
         atomicStore(&dest[index], ~atomicLoad(&dest[index]));
     }

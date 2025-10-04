@@ -124,8 +124,8 @@ impl SelectionExpr {
         match self {
             SelectionExpr::Union(_, _) => Some(0),
             SelectionExpr::Intersection(_, _) => Some(1),
-            SelectionExpr::Difference(_, _) => Some(2),
-            SelectionExpr::SymmetricDifference(_, _) => Some(3),
+            SelectionExpr::SymmetricDifference(_, _) => Some(2),
+            SelectionExpr::Difference(_, _) => Some(3),
             SelectionExpr::Complement(_) => Some(4),
             SelectionExpr::Unary(op, _, _) => Some(*op as u32 + Self::CUSTOM_OP_START),
             SelectionExpr::Binary(_, op, _, _) => Some(*op as u32 + Self::CUSTOM_OP_START),
@@ -221,6 +221,9 @@ impl SelectionExpr {
 /// [`SelectionExpr::Binary`], or [`SelectionExpr::Selection`] custom operation must have the same
 /// bind group 0 as the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`]. They must also
 /// not have the bind group itself, as it will be supplied automatically during evaluation.
+///
+/// Note that [`SelectionExpr::Unary`] will also get the source selection buffer, but it will be
+/// empty (all zeros), you should operate on the destination selection buffer only.
 ///
 /// It is recommended to use [`ComputeBundleBuilder`] to create the custom operation bundles,
 /// and build them using [`ComputeBundleBuilder::build_without_bind_groups`].
