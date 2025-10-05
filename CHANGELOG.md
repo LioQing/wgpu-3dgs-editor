@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 - Unreleased
+## [0.4.1](https://crates.io/crates/wgpu-3dgs-editor/0.4.1) - 2025-10-05
 
 ### Added
 
