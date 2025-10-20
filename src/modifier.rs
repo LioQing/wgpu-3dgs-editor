@@ -191,7 +191,7 @@ use crate::{
 ///     if index >= arrayLength(&gaussians) {
 ///         return;
 ///     }
-///     
+///
 ///     @if(/* using selection buffer */) {
 ///         let word_index = index / 32u;
 ///         let bit_index = index % 32u;
@@ -336,7 +336,7 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
     pub const BIND_GROUP_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor<'static> =
         wgpu::BindGroupLayoutDescriptor {
             label: Some("Basic Modifier Bind Group Layout"),
-            entries: &BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR
+            entries: BasicModifierBundle::<G, WithSelection>::BIND_GROUP_LAYOUT_DESCRIPTOR
                 .entries
                 .split_at(3)
                 .0,
@@ -354,7 +354,7 @@ impl<G: GaussianPod> BasicModifierBundle<G> {
     ) -> Self {
         Self::create_bundle_builder(false)
             .build(
-                &device,
+                device,
                 [
                     [
                         gaussians_buffer.buffer().as_entire_binding(),
@@ -478,6 +478,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, WithSelection> {
         };
 
     /// Creates a new [`BasicModifierBundle`] bundle with [`SelectionBuffer`].
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_selection(
         device: &wgpu::Device,
         gaussians_buffer: &GaussiansBuffer<G>,
@@ -490,7 +491,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, WithSelection> {
     ) -> Self {
         BasicModifierBundle::<G>::create_bundle_builder(true)
             .build(
-                &device,
+                device,
                 [
                     vec![
                         gaussians_buffer.buffer().as_entire_binding(),
@@ -539,7 +540,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, NoSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group.
     pub fn new_without_bind_group(device: &wgpu::Device) -> Self {
         BasicModifierBundle::<G>::create_bundle_builder(false)
-            .build_without_bind_groups(&device)
+            .build_without_bind_groups(device)
             .map(|bundle| Self {
                 bundle,
                 gaussian_pod_marker: std::marker::PhantomData,
@@ -553,7 +554,7 @@ impl<G: GaussianPod> BasicModifierBundle<G, WithSelection, ()> {
     /// Creates a new [`BasicModifierBundle`] bundle without a bind group with selection buffer.
     pub fn new_without_bind_group_with_selection(device: &wgpu::Device) -> Self {
         BasicModifierBundle::<G>::create_bundle_builder(true)
-            .build_without_bind_groups(&device)
+            .build_without_bind_groups(device)
             .map(|bundle| Self {
                 bundle,
                 gaussian_pod_marker: std::marker::PhantomData,
@@ -568,7 +569,7 @@ impl<G: GaussianPod, S> BasicModifierBundle<G, S, ()> {
     ///
     /// - `gaussians_bind_group` is the bind group created from [`MODIFIER_GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
     /// - `bind_group` is the bind group created from [`BasicModifierBundle::BIND_GROUP_LAYOUT_DESCRIPTOR`].
-    pub fn apply_with_count<'a>(
+    pub fn apply_with_count(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         gaussians_bind_group: &wgpu::BindGroup,

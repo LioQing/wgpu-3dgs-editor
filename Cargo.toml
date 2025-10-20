@@ -72,7 +72,6 @@ wesl = "0.2"
 assert_matches = { version = "1.5" }
 clap = { version = "4.5", features = ["derive"] }
 env_logger = { version = "0.11" }
-futures = { version = "0.3" }
 pollster = { version = "0.4", features = ["macro"] }
 winit = { version = "0.30" }
 

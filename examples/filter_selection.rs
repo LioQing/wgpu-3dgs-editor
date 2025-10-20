@@ -233,7 +233,7 @@ async fn main() {
             })
             .zip(gaussians.gaussians.iter())
             .filter(|(selected, _)| *selected)
-            .map(|(_, g)| g.clone())
+            .map(|(_, g)| *g)
             .collect::<Vec<_>>(),
     };
 

@@ -268,7 +268,7 @@ async fn main() {
                     ..Default::default()
                 })
                 .build(
-                    &device,
+                    device,
                     [
                         vec![
                             editor.gaussians_buffer.buffer().as_entire_binding(),

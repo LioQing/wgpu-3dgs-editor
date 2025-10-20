@@ -1,0 +1,19 @@
+{
+    "lsp": {
+        "rust-analyzer": {
+            "initialization_options": {
+                "check": {
+                    "command": "clippy"
+                }
+            }
+        }
+    },
+    "languages": {
+        "Rust": {
+            "preferred_line_length": 100
+        }
+    },
+    "file_types": {
+        "Wgsl": ["*.wesl"]
+    }
+}

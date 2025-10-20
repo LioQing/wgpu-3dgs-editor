@@ -527,7 +527,7 @@ impl<G: GaussianPod> SelectionBundle<G> {
     /// [`SelectionExpr::Selection`] as custom operations, they must have the same bind group 0 as
     /// the [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`], see documentation of
     /// [`SelectionBundle`] for more details.
-    pub fn new<'a>(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
+    pub fn new(device: &wgpu::Device, bundles: Vec<ComputeBundle<()>>) -> Self {
         let primitive_bundle = Self::create_primitive_bundle(device);
 
         Self {
@@ -543,6 +543,7 @@ impl<G: GaussianPod> SelectionBundle<G> {
     }
 
     /// Evaluate and apply the selection expression.
+    #[allow(clippy::too_many_arguments)]
     pub fn evaluate(
         &self,
         device: &wgpu::Device,
@@ -557,9 +558,9 @@ impl<G: GaussianPod> SelectionBundle<G> {
             return;
         } else if let SelectionExpr::Buffer(buffer) = expr {
             encoder.copy_buffer_to_buffer(
-                &buffer.buffer(),
+                buffer.buffer(),
                 0,
-                &dest.buffer(),
+                dest.buffer(),
                 0,
                 dest.buffer().size(),
             );
@@ -634,7 +635,7 @@ impl<G: GaussianPod> SelectionBundle<G> {
                     .chain(bind_groups)
                     .collect::<Vec<_>>();
 
-                let bundle = &self.bundles[i as usize];
+                let bundle = &self.bundles[i];
 
                 bundle.dispatch(encoder, gaussians.len() as u32, bind_groups);
             }
@@ -667,7 +668,7 @@ impl<G: GaussianPod> SelectionBundle<G> {
                 features: G::wesl_features(),
                 ..Default::default()
             })
-            .build_without_bind_groups(&device)
+            .build_without_bind_groups(device)
             .map_err(|e| log::error!("{e}"))
             .expect("primitive bundle")
     }

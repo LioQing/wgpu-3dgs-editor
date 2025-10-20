@@ -249,6 +249,7 @@ impl<G: GaussianPod, M: Modifier<G>> SelectionModifier<G, M> {
     ///
     /// [`SelectionModifier::apply`] is the equivalent of applying this function with
     /// [`SelectionModifier::selection_expr`] and [`SelectionModifier::selection_buffer`].
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_with(
         &self,
         device: &wgpu::Device,
