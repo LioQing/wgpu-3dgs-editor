@@ -8,7 +8,6 @@ use wgpu_3dgs_editor::{
 
 use crate::common::TestContext;
 
-// BasicColorModifiersBuffer tests
 #[test]
 fn test_basic_color_modifiers_buffer_new_should_return_correct_buffer() {
     let ctx = TestContext::new();
@@ -146,7 +145,6 @@ fn test_basic_color_modifiers_pod_new_with_hsv_modifiers_should_return_correct_p
     assert_eq!(pod.gamma, gamma);
 }
 
-// TransformFlagsBuffer tests
 #[test]
 fn test_transform_flags_buffer_new_should_return_correct_buffer() {
     let ctx = TestContext::new();
@@ -208,7 +206,6 @@ fn test_transform_flags_buffer_try_from_and_into_wgpu_buffer_should_be_equal() {
     assert_eq!(wgpu_downloaded, wgpu_converted_downloaded);
 }
 
-// RotScaleBuffer tests
 #[test]
 fn test_rot_scale_buffer_new_should_return_correct_buffer() {
     let ctx = TestContext::new();

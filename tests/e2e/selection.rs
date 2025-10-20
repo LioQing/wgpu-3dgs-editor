@@ -82,7 +82,7 @@ fn test_selection_bundle_evaluate_helper(
 ) {
     let gaussians = given_test_selection_gaussians();
     let editor = Editor::new(&ctx.device, &gaussians);
-    let (left_buffer, right_buffer) = given_test_selection_buffers(&ctx);
+    let (left_buffer, right_buffer) = given_test_selection_buffers(ctx);
     let selection_buffer = SelectionBuffer::new(&ctx.device, gaussians.gaussians.len() as u32);
 
     let selection_bundle = SelectionBundle::<G>::new(&ctx.device, bundles);

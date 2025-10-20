@@ -42,7 +42,7 @@ fn test_selection_buffer_from_and_into_wgpu_buffer_should_be_equal() {
             usage: SelectionBuffer::DEFAULT_USAGES | wgpu::BufferUsages::COPY_SRC,
         });
 
-    let converted_buffer = SelectionBuffer::try_from(wgpu_buffer.clone()).expect("try_from");
+    let converted_buffer = SelectionBuffer::from(wgpu_buffer.clone());
     let wgpu_converted_buffer = wgpu::Buffer::from(converted_buffer.clone());
 
     let wgpu_downloaded =
