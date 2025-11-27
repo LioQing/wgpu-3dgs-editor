@@ -1,8 +1,7 @@
 use glam::*;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
-    InvTransformBuffer, SelectionBuffer, SelectionOpBuffer,
-    core::{BufferWrapper, DownloadableBufferWrapper},
+    InvTransformBuffer, SelectionBuffer, SelectionOpBuffer, core::BufferWrapper,
 };
 
 use crate::common::TestContext;

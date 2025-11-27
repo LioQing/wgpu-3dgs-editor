@@ -48,7 +48,7 @@ fn test_selection_modifier_apply_should_correctly_select_and_modify_gaussians() 
         &ctx.queue,
         Vec3::ONE,
         Quat::IDENTITY,
-        gaussians.gaussians[0].pos,
+        gaussians[0].pos,
     );
 
     selection_modifier.selection_expr = SelectionExpr::selection(
@@ -89,10 +89,7 @@ fn test_selection_modifier_apply_should_correctly_select_and_modify_gaussians() 
 
     assert_eq!(downloaded.len(), 2);
     assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(
-        downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
@@ -128,7 +125,7 @@ fn test_basic_selection_modifier_apply_should_correctly_select_and_modify_gaussi
         &ctx.queue,
         Vec3::ONE,
         Quat::IDENTITY,
-        gaussians.gaussians[0].pos,
+        gaussians[0].pos,
     );
 
     selection_modifier.selection_expr = SelectionExpr::selection(
@@ -169,8 +166,5 @@ fn test_basic_selection_modifier_apply_should_correctly_select_and_modify_gaussi
 
     assert_eq!(downloaded.len(), 2);
     assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(
-        downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }

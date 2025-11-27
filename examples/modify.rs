@@ -22,7 +22,7 @@ use wgpu_3dgs_editor::{self as gs};
 )]
 struct Args {
     /// Path to the .ply file.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "examples/model.ply")]
     model: String,
 
     /// The output path for the modified .ply file.
@@ -101,9 +101,7 @@ async fn main() {
         .expect("device");
 
     log::debug!("Creating gaussians");
-    let f = std::fs::File::open(model_path).expect("ply file");
-    let mut reader = std::io::BufReader::new(f);
-    let gaussians = gs::core::Gaussians::read_ply(&mut reader).expect("gaussians");
+    let gaussians = gs::core::PlyGaussians::read_ply_file(model_path).expect("gaussians");
 
     log::debug!("Creating editor");
     let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
@@ -162,19 +160,18 @@ async fn main() {
     log::info!("Editing process completed in {:?}", time.elapsed());
 
     log::debug!("Downloading Gaussians");
-    let modified_gaussians = gs::core::Gaussians {
-        gaussians: editor
-            .gaussians_buffer
-            .download_gaussians(&device, &queue)
-            .await
-            .expect("gaussians download"),
-    };
+    let modified_gaussians = editor
+        .gaussians_buffer
+        .download_gaussians(&device, &queue)
+        .await
+        .expect("gaussians download")
+        .into_iter()
+        .map(|g| g.to_ply())
+        .collect::<gs::core::PlyGaussians>();
 
     log::debug!("Writing modified Gaussians to output file");
-    let output_file = std::fs::File::create(&args.output).expect("output file");
-    let mut writer = std::io::BufWriter::new(output_file);
     modified_gaussians
-        .write_ply(&mut writer)
+        .write_ply_file(&args.output)
         .expect("write modified Gaussians to output file");
 
     log::info!("Modified Gaussians written to {}", args.output);

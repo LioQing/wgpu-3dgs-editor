@@ -209,10 +209,7 @@ fn test_basic_modifier_bundle_without_bind_group_with_selection_apply_should_mod
 
     assert_eq!(downloaded.len(), 2);
     assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(
-        downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
@@ -324,8 +321,5 @@ fn test_basic_modifier_with_selection_apply_should_modify_selected_gaussians() {
 
     assert_eq!(downloaded.len(), 2);
     assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(
-        downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }

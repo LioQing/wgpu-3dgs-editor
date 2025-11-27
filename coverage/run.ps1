@@ -1,4 +1,5 @@
 $BASE_DIR = $PSScriptRoot
+$EXAMPLES_PATH = "$BASE_DIR/../examples"
 $LCOV_PATH = "$BASE_DIR/lcov.info"
 
 echo "Running coverage..."
@@ -6,25 +7,25 @@ echo "Running coverage..."
 cargo llvm-cov clean --workspace
 
 echo "Running 'modify' example"
-cargo llvm-cov run --example modify -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" --rgb-or-hsv 0.1 0.9 0.8 --alpha 0.7 --contrast "-1.0" --exposure 0.5 --gamma 1.2
+cargo llvm-cov run --example modify -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" --rgb-or-hsv 0.1 0.9 0.8 --alpha 0.7 --contrast "-1.0" --exposure 0.5 --gamma 1.2
 
 echo "Running 'modify' example with '--override-rgb' flag"
-cargo llvm-cov run --example modify -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" --override-rgb --rgb-or-hsv 0.7 0.9 0.8 --alpha 0.7 --contrast "-1.0" --exposure 0.5 --gamma 1.2
+cargo llvm-cov run --example modify -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" --override-rgb --rgb-or-hsv 0.7 0.9 0.8 --alpha 0.7 --contrast "-1.0" --exposure 0.5 --gamma 1.2
 
 echo "Running 'modify-selection' example"
-cargo llvm-cov run --example modify-selection -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0 --contrast "-1.0"
+cargo llvm-cov run --example modify-selection -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0 --contrast "-1.0"
 
 echo "Running 'modify-selection' example with '--shape Box' flag"
-cargo llvm-cov run --example modify-selection -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --shape Box --repeat 2 --offset 2.0 0.0 0.0 --contrast "-1.0"
+cargo llvm-cov run --example modify-selection -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --shape Box --repeat 2 --offset 2.0 0.0 0.0 --contrast "-1.0"
 
 echo "Running 'filter-selection' example"
-cargo llvm-cov run --example filter-selection -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0
+cargo llvm-cov run --example filter-selection -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --repeat 2 --offset 2.0 0.0 0.0
 
 echo "Running 'filter-selection' example with '--shape Box' flag"
-cargo llvm-cov run --example filter-selection -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --shape Box --repeat 2 --offset 2.0 0.0 0.0
+cargo llvm-cov run --example filter-selection -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 1.0 0.5 -r 0.2 0.0 0.0 1.0 -s 1 1 1 --shape Box --repeat 2 --offset 2.0 0.0 0.0
 
 echo "Running 'custom-modify-selection' example"
-cargo llvm-cov run --example custom-modify-selection -- -m "$BASE_DIR/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 0.0 0.2 -r 2.0
+cargo llvm-cov run --example custom-modify-selection -- -m "$EXAMPLES_PATH/model.ply" -o "$BASE_DIR/output.ply" -p 0.5 0.0 0.2 -r 2.0
 
 # `--doctests` flag is currently unstable
 # echo "Running doctests"
