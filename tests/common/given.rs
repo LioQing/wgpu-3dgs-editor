@@ -1,4 +1,4 @@
-use wgpu_3dgs_core::{Gaussian, Gaussians, glam::*};
+use wgpu_3dgs_core::{Gaussian, glam::*};
 
 pub fn gaussian_with_seed(seed: u32) -> Gaussian {
     let base = seed as f32;
@@ -35,8 +35,6 @@ pub fn gaussian_with_seed(seed: u32) -> Gaussian {
     }
 }
 
-pub fn gaussians() -> Gaussians {
-    Gaussians {
-        gaussians: vec![gaussian_with_seed(42), gaussian_with_seed(123)],
-    }
+pub fn gaussians() -> Vec<Gaussian> {
+    vec![gaussian_with_seed(42), gaussian_with_seed(123)]
 }

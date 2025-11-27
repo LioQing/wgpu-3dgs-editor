@@ -13,10 +13,8 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_editor::{
-    self as gs,
-    core::{BufferWrapper, DownloadableBufferWrapper},
-};
+use wgpu_3dgs_core::PlyGaussians;
+use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -29,7 +27,7 @@ use wgpu_3dgs_editor::{
 )]
 struct Args {
     /// Path to the .ply file.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "examples/model.ply")]
     model: String,
 
     /// The output path for the modified .ply file.
@@ -134,13 +132,10 @@ async fn main() {
         .expect("device");
 
     log::debug!("Creating gaussians");
-    let f = std::fs::File::open(model_path).expect("ply file");
-    let mut reader = std::io::BufReader::new(f);
-    let gaussians = gs::core::Gaussians::read_ply(&mut reader).expect("gaussians");
+    let gaussians = gs::core::PlyGaussians::read_ply_file(model_path).expect("gaussians");
 
     log::debug!("Creating gaussians buffer");
-    let gaussians_buffer =
-        gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians.gaussians);
+    let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians);
 
     log::debug!("Creating model transform buffer");
     let model_transform = gs::core::ModelTransformBuffer::new(&device);
@@ -220,28 +215,24 @@ async fn main() {
     log::info!("Editing process completed in {:?}", time.elapsed());
 
     log::debug!("Filtering Gaussians");
-    let selected_gaussians = gs::core::Gaussians {
-        gaussians: dest
-            .download::<u32>(&device, &queue)
-            .await
-            .expect("selected download")
-            .iter()
-            .flat_map(|group| {
-                std::iter::repeat_n(group, 32)
-                    .enumerate()
-                    .map(|(i, g)| g & (1 << i) != 0)
-            })
-            .zip(gaussians.gaussians.iter())
-            .filter(|(selected, _)| *selected)
-            .map(|(_, g)| *g)
-            .collect::<Vec<_>>(),
-    };
+    let selected_gaussians = dest
+        .download::<u32>(&device, &queue)
+        .await
+        .expect("selected download")
+        .iter()
+        .flat_map(|group| {
+            std::iter::repeat_n(group, 32)
+                .enumerate()
+                .map(|(i, g)| g & (1 << i) != 0)
+        })
+        .zip(gaussians.iter())
+        .filter(|(selected, _)| *selected)
+        .map(|(_, g)| *g)
+        .collect::<PlyGaussians>();
 
     log::debug!("Writing modified Gaussians to output file");
-    let output_file = std::fs::File::create(&args.output).expect("output file");
-    let mut writer = std::io::BufWriter::new(output_file);
     selected_gaussians
-        .write_ply(&mut writer)
+        .write_ply_file(&args.output)
         .expect("write modified Gaussians to output file");
 
     log::info!("Filtered Gaussians written to {}", args.output);

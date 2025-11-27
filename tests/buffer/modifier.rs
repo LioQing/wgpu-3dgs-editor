@@ -2,8 +2,7 @@ use glam::*;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     BasicColorModifiersBuffer, BasicColorModifiersPod, RotScaleBuffer, RotScalePod, TransformFlags,
-    TransformFlagsBuffer,
-    core::{BufferWrapper, DownloadableBufferWrapper},
+    TransformFlagsBuffer, core::BufferWrapper,
 };
 
 use crate::common::TestContext;

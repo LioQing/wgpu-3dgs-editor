@@ -3,8 +3,8 @@ use wgpu_3dgs_editor::{
     BasicColorModifiersPod, BasicModifier, Editor, Modifier, NonDestructiveModifier,
     NonDestructiveModifierCreateError,
     core::{
-        GaussianPodWithShSingleCov3dRotScaleConfigs, Gaussians, GaussiansBuffer,
-        GaussiansBufferUpdateError, glam::*,
+        GaussianPodWithShSingleCov3dRotScaleConfigs, GaussiansBuffer, GaussiansBufferUpdateError,
+        glam::*,
     },
 };
 
@@ -42,16 +42,10 @@ fn test_non_destructive_modifier_new_should_create_copy_of_original_gaussians() 
     .expect("download_gaussians");
 
     assert_eq!(original_downloaded.len(), 2);
-    assert_eq!(original_downloaded[0].pos, gaussians.gaussians[0].pos);
-    assert_eq!(original_downloaded[1].pos, gaussians.gaussians[1].pos);
-    assert_eq!(
-        original_downloaded[0].color.xyz(),
-        gaussians.gaussians[0].color.xyz()
-    );
-    assert_eq!(
-        original_downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(original_downloaded[0].pos, gaussians[0].pos);
+    assert_eq!(original_downloaded[1].pos, gaussians[1].pos);
+    assert_eq!(original_downloaded[0].color.xyz(), gaussians[0].color.xyz());
+    assert_eq!(original_downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
@@ -61,7 +55,7 @@ fn test_non_destructive_modifier_new_without_copy_src_usage_should_return_error(
 
     let gaussians_buffer = GaussiansBuffer::<G>::new_with_usage(
         &ctx.device,
-        &gaussians.gaussians,
+        &gaussians,
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
     );
 
@@ -150,14 +144,8 @@ fn test_non_destructive_modifier_apply_should_not_modify_original_gaussians() {
     .expect("download_gaussians");
 
     assert_eq!(original_downloaded.len(), 2);
-    assert_eq!(
-        original_downloaded[0].color.xyz(),
-        gaussians.gaussians[0].color.xyz()
-    );
-    assert_eq!(
-        original_downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(original_downloaded[0].color.xyz(), gaussians[0].color.xyz());
+    assert_eq!(original_downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
@@ -264,14 +252,8 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
     )
     .expect("download_gaussians");
 
-    assert_eq!(
-        original_downloaded[0].color.xyz(),
-        gaussians.gaussians[0].color.xyz()
-    );
-    assert_eq!(
-        original_downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(original_downloaded[0].color.xyz(), gaussians[0].color.xyz());
+    assert_eq!(original_downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
@@ -291,15 +273,12 @@ fn test_non_destructive_modifier_try_apply_with_mismatched_count_should_return_e
         NonDestructiveModifier::new(&ctx.device, &ctx.queue, modifier, &editor.gaussians_buffer)
             .expect("non-destructive modifier");
 
-    let different_gaussians = Gaussians {
-        gaussians: vec![
-            given::gaussian_with_seed(1),
-            given::gaussian_with_seed(2),
-            given::gaussian_with_seed(3),
-        ],
-    };
-    let different_gaussians_buffer =
-        GaussiansBuffer::<G>::new(&ctx.device, &different_gaussians.gaussians);
+    let different_gaussians = vec![
+        given::gaussian_with_seed(1),
+        given::gaussian_with_seed(2),
+        given::gaussian_with_seed(3),
+    ];
+    let different_gaussians_buffer = GaussiansBuffer::<G>::new(&ctx.device, &different_gaussians);
 
     let mut encoder = ctx
         .device
@@ -368,14 +347,8 @@ fn test_non_destructive_modifier_try_apply_with_should_use_custom_apply_function
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(
-        downloaded[0].color.xyz(),
-        gaussians.gaussians[0].color.xyz()
-    );
-    assert_eq!(
-        downloaded[1].color.xyz(),
-        gaussians.gaussians[1].color.xyz()
-    );
+    assert_eq!(downloaded[0].color.xyz(), gaussians[0].color.xyz());
+    assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
 #[test]
