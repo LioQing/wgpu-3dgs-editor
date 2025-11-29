@@ -1,3 +1,4 @@
+use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     Editor, InvTransformBuffer, SelectionBuffer, SelectionBundle, SelectionExpr,
@@ -107,7 +108,9 @@ fn test_selection_bundle_evaluate_helper(
 
     ctx.queue.submit(Some(encoder.finish()));
 
-    let downloaded = pollster::block_on(selection_buffer.download::<u32>(&ctx.device, &ctx.queue))
+    let downloaded = selection_buffer
+        .download::<u32>(&ctx.device, &ctx.queue)
+        .block_on()
         .expect("download")[0];
 
     assert_eq!(

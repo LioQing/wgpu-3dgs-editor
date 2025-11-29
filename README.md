@@ -4,8 +4,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/wgpu-3dgs-editor)](https://crates.io/crates/wgpu-3dgs-editor)
 [![Docs.rs](https://img.shields.io/docsrs/wgpu-3dgs-editor)](https://docs.rs/wgpu-3dgs-editor/latest/wgpu_3dgs_editor)
-[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLioQing%2Fwgpu-3dgs-editor%2Frefs%2Fheads%2Fmaster%2Fcoverage%2Fbadge.json
-)](https://github.com/LioQing/wgpu-3dgs-editor/tree/master/coverage)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FLioQing%2Fwgpu-3dgs-editor%2Frefs%2Fheads%2Fmaster%2Fcoverage%2Fbadge.json)](https://github.com/LioQing/wgpu-3dgs-editor/tree/master/coverage)
 [![License](https://img.shields.io/crates/l/wgpu-3dgs-editor)](https://crates.io/crates/wgpu-3dgs-editor)
 
 ## Overview
@@ -17,22 +16,24 @@
 > Use at your own risk.
 
 This library provides a set of tools to create and manipulate 3D Gaussian Splatting models. It includes:
+
 - Selecting Gaussians using selection operations and expressions.
-    - Primitive operations: union, intersection, difference, symmetric difference, and inversion.
-    - Custom operations: define your own selection logic using WGSL shaders.
-    - Built-in custom operations: sphere and box selections.
+  - Primitive operations: union, intersection, difference, symmetric difference, and inversion.
+  - Custom operations: define your own selection logic using WGSL shaders.
+  - Built-in custom operations: sphere and box selections.
 - Modifying Gaussian attributes.
-    - Masked modifications: apply changes only to selected Gaussians from selection buffers.
-    - Custom modifiers: define your own modification logic using WGSL/WESL shaders.
-    - Built-in basic modifier: color adjustments (RGB override or HSV modifications), alpha, contrast, exposure, gamma, and transformations (scale and rotation).
+  - Masked modifications: apply changes only to selected Gaussians from selection buffers.
+  - Custom modifiers: define your own modification logic using WGSL/WESL shaders.
+  - Built-in basic modifier: color adjustments (RGB override or HSV modifications), alpha, contrast, exposure, gamma, and transformations (scale and rotation).
 - Shaders
-    - WGSL shaders packaged with WESL, you can extend or replace them.
+  - WGSL shaders packaged with WESL, you can extend or replace them.
 
 ## Usage
 
 This crate provides some basic selection and modifier, but you may also define your own custom selection and modifier using WGSL/WESL shaders.
 
 You may read the documentation of the following traits and structs for more details:
+
 - [`Editor`]: The struct that manages the necessary buffers and applies the selection and modification.
 - [`Modifier`]: The trait for modification operations, may be used to define custom modifiers.
 - [`BasicModifier`]: A built-in modifier that enables some basic color and transformation modifications.
@@ -56,9 +57,7 @@ use wgpu_3dgs_editor as gs;
 // Setup wgpu...
 
 // Read the Gaussians from the .ply file
-let f = std::fs::File::open(input_path).unwrap();
-let mut reader = std::io::BufReader::new(f);
-let gaussians = gs::core::Gaussians::read_ply(&mut reader).unwrap();
+let gaussians = gs::core::PlyGaussians::read_ply_file(model_path).unwrap();
 
 // Create an editor that creates the necessary buffers, you may also create the buffers manually
 let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
@@ -138,18 +137,16 @@ editor.apply(
 // Submit the commands...
 
 // Download the modified Gaussians
-let modified_gaussians = gs::core::Gaussians {
-    gaussians: editor
-        .gaussians_buffer
-        .download_gaussians(&device, &queue)
-        .await
-        .unwrap(),
-};
+let modified_gaussians = editor
+    .gaussians_buffer
+    .download_gaussians(&device, &queue)
+    .await
+    .unwrap()
+    .map(|g| g.to_ply())
+    .collect::<core::PlyGaussians>();
 
 // Write the modified Gaussians to a .ply file
-let output_file = std::fs::File::create(output_path).unwrap();
-let mut writer = std::io::BufWriter::new(output_file);
-modified_gaussians.write_ply(&mut writer).unwrap();
+modified_gaussians.write_ply_file(&args.output).unwrap();
 ```
 
 ## Examples
