@@ -274,17 +274,15 @@ impl FixedSizeBufferWrapper for RotScaleBuffer {
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct RotScalePod {
     pub rot: Quat,
-    pub scale: Vec3,
-    pub _padding: u32,
+    pub scale: Vec3A,
 }
 
 impl RotScalePod {
     /// Create a new scale and rotation pod.
-    pub fn new(rot: Quat, scale: Vec3) -> Self {
+    pub const fn new(rot: Quat, scale: Vec3) -> Self {
         Self {
             rot,
-            scale,
-            _padding: 0,
+            scale: Vec3A::from_array(scale.to_array()),
         }
     }
 }
@@ -293,8 +291,7 @@ impl Default for RotScalePod {
     fn default() -> Self {
         Self {
             rot: Quat::IDENTITY,
-            scale: Vec3::ONE,
-            _padding: 0,
+            scale: Vec3A::ONE,
         }
     }
 }

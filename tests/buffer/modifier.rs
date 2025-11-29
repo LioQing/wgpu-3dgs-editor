@@ -1,9 +1,9 @@
 use glam::*;
+use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     BasicColorModifiersBuffer, BasicColorModifiersPod, RotScaleBuffer, RotScalePod, TransformFlags,
-    TransformFlagsBuffer,
-    core::{BufferWrapper, DownloadableBufferWrapper},
+    TransformFlagsBuffer, core::BufferWrapper, core::FixedSizeBufferWrapper,
 };
 
 use crate::common::TestContext;
@@ -40,9 +40,10 @@ fn test_basic_color_modifiers_buffer_update_with_override_rgb_should_update_buff
 
     buffer.update_with_override_rgb(&ctx.queue, rgb, alpha, contrast, exposure, gamma);
 
-    let downloaded =
-        pollster::block_on(buffer.download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue))
-            .expect("download")[0];
+    let downloaded = buffer
+        .download_single(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(downloaded, pod);
 }
@@ -68,9 +69,10 @@ fn test_basic_color_modifiers_buffer_update_with_hsv_modifiers_should_update_buf
 
     buffer.update_with_hsv_modifiers(&ctx.queue, hsv, alpha, contrast, exposure, gamma);
 
-    let downloaded =
-        pollster::block_on(buffer.download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue))
-            .expect("download")[0];
+    let downloaded = buffer
+        .download_single(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(downloaded, pod);
 }
@@ -97,17 +99,18 @@ fn test_basic_color_modifiers_buffer_try_from_and_into_wgpu_buffer_should_be_equ
         BasicColorModifiersBuffer::try_from(wgpu_buffer.clone()).expect("try_from");
     let wgpu_converted_buffer = wgpu::Buffer::from(converted_buffer.clone());
 
-    let wgpu_downloaded = pollster::block_on(
-        wgpu_converted_buffer.download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue),
-    )
-    .expect("download");
-    let converted_downloaded = pollster::block_on(
-        converted_buffer.download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue),
-    )
-    .expect("download");
-    let wgpu_converted_downloaded =
-        pollster::block_on(wgpu_buffer.download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue))
-            .expect("download");
+    let wgpu_downloaded = wgpu_converted_buffer
+        .download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let converted_downloaded = converted_buffer
+        .download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let wgpu_converted_downloaded = wgpu_buffer
+        .download::<BasicColorModifiersPod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(wgpu_downloaded, converted_downloaded);
     assert_eq!(wgpu_downloaded, wgpu_converted_downloaded);
@@ -172,8 +175,10 @@ fn test_transform_flags_buffer_update_should_update_buffer_correctly() {
 
     buffer.update(&ctx.queue, flags);
 
-    let downloaded =
-        pollster::block_on(buffer.download::<u32>(&ctx.device, &ctx.queue)).expect("download")[0];
+    let downloaded = buffer
+        .download_single(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(downloaded, flags.bits());
 }
@@ -193,14 +198,18 @@ fn test_transform_flags_buffer_try_from_and_into_wgpu_buffer_should_be_equal() {
     let converted_buffer = TransformFlagsBuffer::try_from(wgpu_buffer.clone()).expect("try_from");
     let wgpu_converted_buffer = wgpu::Buffer::from(converted_buffer.clone());
 
-    let wgpu_downloaded =
-        pollster::block_on(wgpu_converted_buffer.download::<u32>(&ctx.device, &ctx.queue))
-            .expect("download");
-    let converted_downloaded =
-        pollster::block_on(converted_buffer.download::<u32>(&ctx.device, &ctx.queue))
-            .expect("download");
-    let wgpu_converted_downloaded =
-        pollster::block_on(wgpu_buffer.download::<u32>(&ctx.device, &ctx.queue)).expect("download");
+    let wgpu_downloaded = wgpu_converted_buffer
+        .download::<u32>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let converted_downloaded = converted_buffer
+        .download::<u32>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let wgpu_converted_downloaded = wgpu_buffer
+        .download::<u32>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(wgpu_downloaded, converted_downloaded);
     assert_eq!(wgpu_downloaded, wgpu_converted_downloaded);
@@ -234,8 +243,10 @@ fn test_rot_scale_buffer_update_should_update_buffer_correctly() {
 
     buffer.update(&ctx.queue, rot, scale);
 
-    let downloaded = pollster::block_on(buffer.download::<RotScalePod>(&ctx.device, &ctx.queue))
-        .expect("download")[0];
+    let downloaded = buffer
+        .download_single(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(downloaded, pod);
 }
@@ -258,15 +269,18 @@ fn test_rot_scale_buffer_try_from_and_into_wgpu_buffer_should_be_equal() {
     let converted_buffer = RotScaleBuffer::try_from(wgpu_buffer.clone()).expect("try_from");
     let wgpu_converted_buffer = wgpu::Buffer::from(converted_buffer.clone());
 
-    let wgpu_downloaded =
-        pollster::block_on(wgpu_converted_buffer.download::<RotScalePod>(&ctx.device, &ctx.queue))
-            .expect("download");
-    let converted_downloaded =
-        pollster::block_on(converted_buffer.download::<RotScalePod>(&ctx.device, &ctx.queue))
-            .expect("download");
-    let wgpu_converted_downloaded =
-        pollster::block_on(wgpu_buffer.download::<RotScalePod>(&ctx.device, &ctx.queue))
-            .expect("download");
+    let wgpu_downloaded = wgpu_converted_buffer
+        .download::<RotScalePod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let converted_downloaded = converted_buffer
+        .download::<RotScalePod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
+    let wgpu_converted_downloaded = wgpu_buffer
+        .download::<RotScalePod>(&ctx.device, &ctx.queue)
+        .block_on()
+        .expect("download");
 
     assert_eq!(wgpu_downloaded, converted_downloaded);
     assert_eq!(wgpu_downloaded, wgpu_converted_downloaded);
@@ -279,5 +293,5 @@ fn test_rot_scale_pod_new_should_return_correct_pod() {
     let pod = RotScalePod::new(rot, scale);
 
     assert_eq!(pod.rot, rot);
-    assert_eq!(pod.scale, scale);
+    assert_eq!(pod.scale, scale.to_vec3a());
 }

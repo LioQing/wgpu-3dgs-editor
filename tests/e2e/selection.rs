@@ -1,9 +1,10 @@
+use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     Editor, InvTransformBuffer, SelectionBuffer, SelectionBundle, SelectionExpr,
     core::{
-        BufferWrapper, ComputeBundle, ComputeBundleBuilder, DownloadableBufferWrapper, Gaussian,
-        GaussianPod, GaussianPodWithShSingleCov3dRotScaleConfigs, Gaussians, glam::*,
+        BufferWrapper, ComputeBundle, ComputeBundleBuilder, Gaussian, GaussianPod,
+        GaussianPodWithShSingleCov3dRotScaleConfigs, glam::*,
     },
 };
 
@@ -11,39 +12,37 @@ use crate::{common::TestContext, inline_wesl_pkg};
 
 type G = GaussianPodWithShSingleCov3dRotScaleConfigs;
 
-fn given_test_selection_gaussians() -> Gaussians {
-    Gaussians {
-        gaussians: vec![
-            Gaussian {
-                pos: Vec3::new(0.0, 0.0, 0.0),
-                rot: Quat::IDENTITY,
-                color: U8Vec4::new(255, 0, 0, 255),
-                sh: [Vec3::ZERO; 15],
-                scale: Vec3::ONE,
-            },
-            Gaussian {
-                pos: Vec3::new(1.0, 0.0, 0.0),
-                rot: Quat::IDENTITY,
-                color: U8Vec4::new(0, 255, 0, 255),
-                sh: [Vec3::ZERO; 15],
-                scale: Vec3::ONE,
-            },
-            Gaussian {
-                pos: Vec3::new(2.0, 0.0, 0.0),
-                rot: Quat::IDENTITY,
-                color: U8Vec4::new(0, 0, 255, 255),
-                sh: [Vec3::ZERO; 15],
-                scale: Vec3::ONE,
-            },
-            Gaussian {
-                pos: Vec3::new(3.0, 0.0, 0.0),
-                rot: Quat::IDENTITY,
-                color: U8Vec4::new(255, 255, 255, 255),
-                sh: [Vec3::ZERO; 15],
-                scale: Vec3::ONE,
-            },
-        ],
-    }
+fn given_test_selection_gaussians() -> Vec<Gaussian> {
+    vec![
+        Gaussian {
+            pos: Vec3::new(0.0, 0.0, 0.0),
+            rot: Quat::IDENTITY,
+            color: U8Vec4::new(255, 0, 0, 255),
+            sh: [Vec3::ZERO; 15],
+            scale: Vec3::ONE,
+        },
+        Gaussian {
+            pos: Vec3::new(1.0, 0.0, 0.0),
+            rot: Quat::IDENTITY,
+            color: U8Vec4::new(0, 255, 0, 255),
+            sh: [Vec3::ZERO; 15],
+            scale: Vec3::ONE,
+        },
+        Gaussian {
+            pos: Vec3::new(2.0, 0.0, 0.0),
+            rot: Quat::IDENTITY,
+            color: U8Vec4::new(0, 0, 255, 255),
+            sh: [Vec3::ZERO; 15],
+            scale: Vec3::ONE,
+        },
+        Gaussian {
+            pos: Vec3::new(3.0, 0.0, 0.0),
+            rot: Quat::IDENTITY,
+            color: U8Vec4::new(255, 255, 255, 255),
+            sh: [Vec3::ZERO; 15],
+            scale: Vec3::ONE,
+        },
+    ]
 }
 
 const TEST_LEFT_SELECTION: u32 = 0b0011; // Select first two gaussians
@@ -83,7 +82,7 @@ fn test_selection_bundle_evaluate_helper(
     let gaussians = given_test_selection_gaussians();
     let editor = Editor::new(&ctx.device, &gaussians);
     let (left_buffer, right_buffer) = given_test_selection_buffers(ctx);
-    let selection_buffer = SelectionBuffer::new(&ctx.device, gaussians.gaussians.len() as u32);
+    let selection_buffer = SelectionBuffer::new(&ctx.device, gaussians.len() as u32);
 
     let selection_bundle = SelectionBundle::<G>::new(&ctx.device, bundles);
     let selection_expr = expr(
@@ -109,7 +108,9 @@ fn test_selection_bundle_evaluate_helper(
 
     ctx.queue.submit(Some(encoder.finish()));
 
-    let downloaded = pollster::block_on(selection_buffer.download::<u32>(&ctx.device, &ctx.queue))
+    let downloaded = selection_buffer
+        .download::<u32>(&ctx.device, &ctx.queue)
+        .block_on()
         .expect("download")[0];
 
     assert_eq!(
