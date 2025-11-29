@@ -30,6 +30,7 @@ cargo llvm-cov run --example custom-modify-selection -- -m "$EXAMPLES_PATH/model
 # `--doctests` flag is currently unstable
 # echo "Running doctests"
 # cargo llvm-cov --no-report --doctests
+cargo test --doc  # Run doctests without tracking coverage
 
 echo "Running tests"
 cargo llvm-cov --no-report nextest

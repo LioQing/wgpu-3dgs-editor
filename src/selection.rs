@@ -287,15 +287,13 @@ impl SelectionExpr {
 /// // Create an editor that holds the buffers for the Gaussians
 /// let editor = Editor::new(
 ///     &device,
-///     &core::Gaussians {
-///         gaussians: vec![core::Gaussian {
-///             rot: Quat::IDENTITY,
-///             pos: Vec3::ZERO,
-///             color: U8Vec4::ZERO,
-///             sh: [Vec3::ZERO; 15],
-///             scale: Vec3::ONE,
-///         }],
-///     },
+///     &vec![core::Gaussian {
+///         rot: Quat::IDENTITY,
+///         pos: Vec3::ZERO,
+///         color: U8Vec4::ZERO,
+///         sh: [Vec3::ZERO; 15],
+///         scale: Vec3::ONE,
+///     }],
 /// );
 ///
 /// // Create the selection custom operation compute bundle
