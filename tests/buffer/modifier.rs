@@ -293,5 +293,5 @@ fn test_rot_scale_pod_new_should_return_correct_pod() {
     let pod = RotScalePod::new(rot, scale);
 
     assert_eq!(pod.rot, rot);
-    assert_eq!(pod.scale, scale);
+    assert_eq!(pod.scale, scale.to_vec3a());
 }
