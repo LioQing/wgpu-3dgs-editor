@@ -98,7 +98,7 @@ impl BasicColorRgbOverrideOrHsvModifiersPod {
         !self.is_rgb_override()
     }
 
-    /// Get the [`Vec3`] of struct.
+    /// Returns the [`Vec3`] value, negating it if this represents an RGB override.
     pub fn get_vec3(&self) -> Vec3 {
         if self.is_rgb_override() {
             -self.0
