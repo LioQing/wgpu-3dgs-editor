@@ -189,30 +189,20 @@ async fn main() {
     );
 
     log::debug!("Configuring modifiers");
-    match args.override_rgb {
-        true => basic_selection_modifier
-            .modifier
-            .basic_color_modifiers_buffer
-            .update_with_override_rgb(
-                &queue,
-                Vec3::from_slice(&args.rgb_or_hsv),
-                args.alpha,
-                args.contrast,
-                args.exposure,
-                args.gamma,
-            ),
-        false => basic_selection_modifier
-            .modifier
-            .basic_color_modifiers_buffer
-            .update_with_hsv_modifiers(
-                &queue,
-                Vec3::from_slice(&args.rgb_or_hsv),
-                args.alpha,
-                args.contrast,
-                args.exposure,
-                args.gamma,
-            ),
-    }
+    basic_selection_modifier
+        .modifier
+        .basic_color_modifiers_buffer
+        .update(
+            &queue,
+            match args.override_rgb {
+                true => gs::BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override,
+                false => gs::BasicColorRgbOverrideOrHsvModifiersPod::new_hsv_modifiers,
+            }(Vec3::from_slice(&args.rgb_or_hsv)),
+            args.alpha,
+            args.contrast,
+            args.exposure,
+            args.gamma,
+        );
 
     log::debug!("Creating shape selection buffers");
     let shape_selection_buffers = (0..repeat)

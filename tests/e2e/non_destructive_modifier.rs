@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use wgpu_3dgs_editor::{
-    BasicColorModifiersPod, BasicModifier, Editor, Modifier, NonDestructiveModifier,
-    NonDestructiveModifierCreateError,
+    BasicColorModifiersPod, BasicColorRgbOverrideOrHsvModifiersPod, BasicModifier, Editor,
+    Modifier, NonDestructiveModifier, NonDestructiveModifierCreateError,
     core::{
         GaussianPodWithShSingleCov3dRotScaleConfigs, GaussiansBuffer, GaussiansBufferUpdateError,
         glam::*,
@@ -100,8 +100,8 @@ fn test_non_destructive_modifier_apply_should_not_modify_original_gaussians() {
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(1.0, 0.0, 0.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
                 1.0,
                 0.0,
                 0.0,
@@ -170,8 +170,8 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(1.0, 0.0, 0.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
                 1.0,
                 0.0,
                 0.0,
@@ -210,8 +210,8 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(0.0, 1.0, 0.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(0.0, 1.0, 0.0)),
                 1.0,
                 0.0,
                 0.0,
@@ -373,8 +373,8 @@ fn test_non_destructive_modifier_as_modifier_trait_should_work_correctly() {
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(0.0, 0.0, 1.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(0.0, 0.0, 1.0)),
                 1.0,
                 0.0,
                 0.0,

@@ -1,6 +1,6 @@
 use wgpu_3dgs_editor::{
-    BasicColorModifiersPod, BasicModifier, Editor, InvTransformBuffer, Modifier, SelectionBundle,
-    SelectionExpr, SelectionModifier,
+    BasicColorModifiersPod, BasicColorRgbOverrideOrHsvModifiersPod, BasicModifier, Editor,
+    InvTransformBuffer, Modifier, SelectionBundle, SelectionExpr, SelectionModifier,
     core::{BufferWrapper, GaussianPodWithShSingleCov3dRotScaleConfigs, glam::*},
 };
 
@@ -34,8 +34,8 @@ fn test_selection_modifier_apply_should_correctly_select_and_modify_gaussians() 
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(1.0, 0.0, 0.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
                 1.0,
                 0.0,
                 0.0,
@@ -111,8 +111,8 @@ fn test_basic_selection_modifier_apply_should_correctly_select_and_modify_gaussi
         .basic_color_modifiers_buffer
         .update_with_pod(
             &ctx.queue,
-            &BasicColorModifiersPod::new_with_override_rgb(
-                Vec3::new(1.0, 0.0, 0.0),
+            &BasicColorModifiersPod::new(
+                BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
                 1.0,
                 0.0,
                 0.0,
