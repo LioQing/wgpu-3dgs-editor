@@ -1,8 +1,9 @@
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_core::BufferWrapper;
 use wgpu_3dgs_editor::{
-    BasicColorModifiersBuffer, BasicColorModifiersPod, BasicModifier, BasicModifierBundle, Editor,
-    Modifier, RotScaleBuffer, SelectionBuffer, TransformFlagsBuffer,
+    BasicColorModifiersBuffer, BasicColorModifiersPod, BasicColorRgbOverrideOrHsvModifiersPod,
+    BasicModifier, BasicModifierBundle, Editor, Modifier, RotScaleBuffer, SelectionBuffer,
+    TransformFlagsBuffer,
     core::{
         GaussianPodWithShSingleCov3dRotScaleConfigs, GaussianTransformBuffer, GaussiansBuffer,
         ModelTransformBuffer, glam::*,
@@ -89,8 +90,8 @@ fn test_basic_modifier_bundle_without_bind_group_apply_should_modify_gaussians()
 
     basic_color_modifiers_buffer.update_with_pod(
         &ctx.queue,
-        &BasicColorModifiersPod::new_with_override_rgb(
-            Vec3::new(1.0, 0.0, 0.0),
+        &BasicColorModifiersPod::new(
+            BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
             1.0,
             0.0,
             0.0,
@@ -176,8 +177,8 @@ fn test_basic_modifier_bundle_without_bind_group_with_selection_apply_should_mod
 
     basic_color_modifiers_buffer.update_with_pod(
         &ctx.queue,
-        &BasicColorModifiersPod::new_with_override_rgb(
-            Vec3::new(1.0, 0.0, 0.0),
+        &BasicColorModifiersPod::new(
+            BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
             1.0,
             0.0,
             0.0,
@@ -227,8 +228,8 @@ fn test_basic_modifier_apply_should_modify_gaussians() {
 
     modifier.basic_color_modifiers_buffer.update_with_pod(
         &ctx.queue,
-        &BasicColorModifiersPod::new_with_override_rgb(
-            Vec3::new(1.0, 0.0, 0.0),
+        &BasicColorModifiersPod::new(
+            BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
             1.0,
             0.0,
             0.0,
@@ -287,8 +288,8 @@ fn test_basic_modifier_with_selection_apply_should_modify_selected_gaussians() {
 
     modifier.basic_color_modifiers_buffer.update_with_pod(
         &ctx.queue,
-        &BasicColorModifiersPod::new_with_override_rgb(
-            Vec3::new(1.0, 0.0, 0.0),
+        &BasicColorModifiersPod::new(
+            BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.0, 0.0)),
             1.0,
             0.0,
             0.0,

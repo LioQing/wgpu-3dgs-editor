@@ -116,9 +116,9 @@ basic_selection_modifier.selection_expr = gs::SelectionExpr::selection(
 basic_selection_modifier
     .modifier
     .basic_color_modifiers_buffer
-    .update_with_override_rgb(
+    .update(
         &queue,
-        color,
+        gs::BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(color),
         alpha,
         contrast,
         exposure,
