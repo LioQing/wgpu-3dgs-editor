@@ -2,8 +2,9 @@ use glam::*;
 use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
-    BasicColorModifiersBuffer, BasicColorModifiersPod, RotScaleBuffer, RotScalePod, TransformFlags,
-    TransformFlagsBuffer, core::BufferWrapper, core::FixedSizeBufferWrapper,
+    BasicColorModifiersBuffer, BasicColorModifiersPod, BasicColorRgbOverrideOrHsvModifiersPod,
+    RotScaleBuffer, RotScalePod, TransformFlags, TransformFlagsBuffer,
+    core::{BufferWrapper, FixedSizeBufferWrapper},
 };
 
 use crate::common::TestContext;
@@ -20,7 +21,7 @@ fn test_basic_color_modifiers_buffer_new_should_return_correct_buffer() {
 }
 
 #[test]
-fn test_basic_color_modifiers_buffer_update_with_override_rgb_should_update_buffer_correctly() {
+fn test_basic_color_modifiers_buffer_update_when_rgb_override_should_update_buffer_correctly() {
     let ctx = TestContext::new();
     let buffer =
         BasicColorModifiersBuffer::try_from(ctx.device.create_buffer(&wgpu::BufferDescriptor {
@@ -31,14 +32,14 @@ fn test_basic_color_modifiers_buffer_update_with_override_rgb_should_update_buff
         }))
         .expect("try_from");
 
-    let rgb = Vec3::new(1.0, 0.5, 0.25);
+    let rgb = BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.5, 0.25));
     let alpha = 0.8;
     let contrast = 0.2;
     let exposure = 0.5;
     let gamma = 2.2;
-    let pod = BasicColorModifiersPod::new_with_override_rgb(rgb, alpha, contrast, exposure, gamma);
+    let pod = BasicColorModifiersPod::new(rgb, alpha, contrast, exposure, gamma);
 
-    buffer.update_with_override_rgb(&ctx.queue, rgb, alpha, contrast, exposure, gamma);
+    buffer.update(&ctx.queue, rgb, alpha, contrast, exposure, gamma);
 
     let downloaded = buffer
         .download_single(&ctx.device, &ctx.queue)
@@ -49,7 +50,7 @@ fn test_basic_color_modifiers_buffer_update_with_override_rgb_should_update_buff
 }
 
 #[test]
-fn test_basic_color_modifiers_buffer_update_with_hsv_modifiers_should_update_buffer_correctly() {
+fn test_basic_color_modifiers_buffer_update_when_hsv_modifiers_should_update_buffer_correctly() {
     let ctx = TestContext::new();
     let buffer =
         BasicColorModifiersBuffer::try_from(ctx.device.create_buffer(&wgpu::BufferDescriptor {
@@ -60,14 +61,14 @@ fn test_basic_color_modifiers_buffer_update_with_hsv_modifiers_should_update_buf
         }))
         .expect("try_from");
 
-    let hsv = Vec3::new(0.5, 1.0, 1.0);
+    let hsv = BasicColorRgbOverrideOrHsvModifiersPod::new_hsv_modifiers(Vec3::new(0.5, 1.0, 1.0));
     let alpha = 0.9;
     let contrast = 0.1;
     let exposure = 0.3;
     let gamma = 1.8;
-    let pod = BasicColorModifiersPod::new_with_hsv_modifiers(hsv, alpha, contrast, exposure, gamma);
+    let pod = BasicColorModifiersPod::new(hsv, alpha, contrast, exposure, gamma);
 
-    buffer.update_with_hsv_modifiers(&ctx.queue, hsv, alpha, contrast, exposure, gamma);
+    buffer.update(&ctx.queue, hsv, alpha, contrast, exposure, gamma);
 
     let downloaded = buffer
         .download_single(&ctx.device, &ctx.queue)
@@ -80,8 +81,8 @@ fn test_basic_color_modifiers_buffer_update_with_hsv_modifiers_should_update_buf
 #[test]
 fn test_basic_color_modifiers_buffer_try_from_and_into_wgpu_buffer_should_be_equal() {
     let ctx = TestContext::new();
-    let pod = BasicColorModifiersPod::new_with_override_rgb(
-        Vec3::new(1.0, 0.5, 0.25),
+    let pod = BasicColorModifiersPod::new(
+        BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.5, 0.25)),
         0.8,
         0.2,
         0.5,
@@ -117,15 +118,35 @@ fn test_basic_color_modifiers_buffer_try_from_and_into_wgpu_buffer_should_be_equ
 }
 
 #[test]
-fn test_basic_color_modifiers_pod_new_with_override_rgb_should_return_correct_pod() {
+fn test_basic_color_rgb_override_or_hsv_modifiers_pod_new_when_rgb_override_should_return_correct_pod()
+ {
     let rgb = Vec3::new(1.0, 0.5, 0.25);
+    let pod = BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(rgb);
+
+    assert!(pod.is_rgb_override());
+    assert_eq!(pod.get_vec3(), rgb);
+}
+
+#[test]
+fn test_basic_color_rgb_override_or_hsv_modifiers_pod_new_when_hsv_modifiers_should_return_correct_pod()
+ {
+    let hsv = Vec3::new(0.5, 1.0, 1.0);
+    let pod = BasicColorRgbOverrideOrHsvModifiersPod::new_hsv_modifiers(hsv);
+
+    assert!(pod.is_hsv_modifiers());
+    assert_eq!(pod.get_vec3(), hsv);
+}
+
+#[test]
+fn test_basic_color_modifiers_pod_new_when_rgb_override_should_return_correct_pod() {
+    let rgb = BasicColorRgbOverrideOrHsvModifiersPod::new_rgb_override(Vec3::new(1.0, 0.5, 0.25));
     let alpha = 0.8;
     let contrast = 0.2;
     let exposure = 0.5;
     let gamma = 2.2;
-    let pod = BasicColorModifiersPod::new_with_override_rgb(rgb, alpha, contrast, exposure, gamma);
+    let pod = BasicColorModifiersPod::new(rgb, alpha, contrast, exposure, gamma);
 
-    assert_eq!(pod.rgb_or_hsv, -rgb);
+    assert_eq!(pod.rgb_or_hsv, rgb);
     assert_eq!(pod.alpha, alpha);
     assert_eq!(pod.contrast, contrast);
     assert_eq!(pod.exposure, exposure);
@@ -133,13 +154,13 @@ fn test_basic_color_modifiers_pod_new_with_override_rgb_should_return_correct_po
 }
 
 #[test]
-fn test_basic_color_modifiers_pod_new_with_hsv_modifiers_should_return_correct_pod() {
-    let hsv = Vec3::new(0.5, 1.0, 1.0);
+fn test_basic_color_modifiers_pod_new_when_hsv_modifiers_should_return_correct_pod() {
+    let hsv = BasicColorRgbOverrideOrHsvModifiersPod::new_hsv_modifiers(Vec3::new(0.5, 1.0, 1.0));
     let alpha = 0.9;
     let contrast = 0.1;
     let exposure = 0.3;
     let gamma = 1.8;
-    let pod = BasicColorModifiersPod::new_with_hsv_modifiers(hsv, alpha, contrast, exposure, gamma);
+    let pod = BasicColorModifiersPod::new(hsv, alpha, contrast, exposure, gamma);
 
     assert_eq!(pod.rgb_or_hsv, hsv);
     assert_eq!(pod.alpha, alpha);

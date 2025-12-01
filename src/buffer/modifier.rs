@@ -22,11 +22,11 @@ impl BasicColorModifiersBuffer {
         Self(buffer)
     }
 
-    /// Update the basic color modifiers with override RGB color.
-    pub fn update_with_override_rgb(
+    /// Update the basic color modifiers.
+    pub fn update(
         &self,
         queue: &wgpu::Queue,
-        rgb: Vec3,
+        rgb_or_hsv: BasicColorRgbOverrideOrHsvModifiersPod,
         alpha: f32,
         contrast: f32,
         exposure: f32,
@@ -34,23 +34,7 @@ impl BasicColorModifiersBuffer {
     ) {
         self.update_with_pod(
             queue,
-            &BasicColorModifiersPod::new_with_override_rgb(rgb, alpha, contrast, exposure, gamma),
-        );
-    }
-
-    /// Update the basic color modifiers buffer with HSV modifications.
-    pub fn update_with_hsv_modifiers(
-        &self,
-        queue: &wgpu::Queue,
-        hsv: Vec3,
-        alpha: f32,
-        contrast: f32,
-        exposure: f32,
-        gamma: f32,
-    ) {
-        self.update_with_pod(
-            queue,
-            &BasicColorModifiersPod::new_with_hsv_modifiers(hsv, alpha, contrast, exposure, gamma),
+            &BasicColorModifiersPod::new(rgb_or_hsv, alpha, contrast, exposure, gamma),
         );
     }
 
@@ -84,21 +68,51 @@ impl FixedSizeBufferWrapper for BasicColorModifiersBuffer {
     type Pod = BasicColorModifiersPod;
 }
 
-/// The POD representation of the basic color modifiers buffer.
+/// The POD representation of the basic color RGB override or HSV modifiers.
 ///
-/// ## RGB Override or HSV Modifications
-///
-/// If any value of `rgb_or_hsv` is negative, then it is used to override the RGB color,
+/// If any value of this vector is negative (including negative zero),
+/// then it is used to override the RGB color,
 /// otherwise it is used to apply HSV modifications.
-///
-/// For example, to override the color to red, use `rgb_or_hsv = Vec3::new(-1.0, 0.0, 0.0)`,
-/// to apply a hue shift of 180 degrees, use `rgb_or_hsv = Vec3::new(0.5, 1.0, 1.0)`.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct BasicColorRgbOverrideOrHsvModifiersPod(pub Vec3);
+
+impl BasicColorRgbOverrideOrHsvModifiersPod {
+    /// Creates a new RGB override pod.
+    pub fn new_rgb_override(rgb: Vec3) -> Self {
+        Self(-rgb)
+    }
+
+    /// Creates a new HSV modifiers pod.
+    pub const fn new_hsv_modifiers(hsv: Vec3) -> Self {
+        Self(hsv)
+    }
+
+    /// Checks if this pod represents an RGB override.
+    pub fn is_rgb_override(&self) -> bool {
+        self.0.x.is_sign_negative() || self.0.y.is_sign_negative() || self.0.z.is_sign_negative()
+    }
+
+    /// Checks if this pod represents HSV modifiers.
+    pub fn is_hsv_modifiers(&self) -> bool {
+        !self.is_rgb_override()
+    }
+
+    /// Get the [`Vec3`] of struct.
+    pub fn get_vec3(&self) -> Vec3 {
+        if self.is_rgb_override() {
+            -self.0
+        } else {
+            self.0
+        }
+    }
+}
+
+/// The POD representation of the basic color modifiers buffer.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct BasicColorModifiersPod {
-    /// If any value of this vector is negative, then it is used to override the RGB color,
-    /// otherwise it is used to apply HSV modifications.
-    pub rgb_or_hsv: Vec3,
+    pub rgb_or_hsv: BasicColorRgbOverrideOrHsvModifiersPod,
     pub alpha: f32,
     pub contrast: f32,
     pub exposure: f32,
@@ -107,34 +121,16 @@ pub struct BasicColorModifiersPod {
 }
 
 impl BasicColorModifiersPod {
-    /// Creates a new basic color modifiers with RGB color override.
-    pub fn new_with_override_rgb(
-        rgb: Vec3,
+    /// Create a new basic color modifiers pod.
+    pub fn new(
+        rgb_or_hsv: BasicColorRgbOverrideOrHsvModifiersPod,
         alpha: f32,
         contrast: f32,
         exposure: f32,
         gamma: f32,
     ) -> Self {
         Self {
-            rgb_or_hsv: -rgb,
-            alpha,
-            contrast,
-            exposure,
-            gamma,
-            _padding: 0,
-        }
-    }
-
-    /// Creates a new basic color modifiers with HSV modifications.
-    pub const fn new_with_hsv_modifiers(
-        hsv: Vec3,
-        alpha: f32,
-        contrast: f32,
-        exposure: f32,
-        gamma: f32,
-    ) -> Self {
-        Self {
-            rgb_or_hsv: hsv,
+            rgb_or_hsv,
             alpha,
             contrast,
             exposure,
@@ -147,7 +143,9 @@ impl BasicColorModifiersPod {
 impl Default for BasicColorModifiersPod {
     fn default() -> Self {
         Self {
-            rgb_or_hsv: Vec3::new(0.0, 1.0, 1.0),
+            rgb_or_hsv: BasicColorRgbOverrideOrHsvModifiersPod::new_hsv_modifiers(Vec3::new(
+                0.0, 1.0, 1.0,
+            )),
             alpha: 1.0,
             contrast: 0.0,
             exposure: 0.0,

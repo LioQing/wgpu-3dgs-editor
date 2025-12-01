@@ -154,7 +154,7 @@ fn apply_basic_color_modifiers(
 ) -> vec4<f32> {
     var rgb = in_color.rgb;
 
-    if any(modifiers.rgb_or_hsv < vec3<f32>(0.0)) {
+    if any(sign(modifiers.rgb_or_hsv) == vec3<f32>(-1.0)) {
         rgb = abs(modifiers.rgb_or_hsv);
     } else {
         let hsv = rgb_to_hsv(rgb);
