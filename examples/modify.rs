@@ -21,11 +21,11 @@ use wgpu_3dgs_editor::{self as gs};
     "
 )]
 struct Args {
-    /// Path to the .ply file.
+    /// Path to the .ply or .spz file.
     #[arg(short, long, default_value = "examples/model.ply")]
     model: String,
 
-    /// The output path for the modified .ply file.
+    /// The output path for the modified .ply or .spz file.
     #[arg(short, long, default_value = "target/output.ply")]
     output: String,
 
@@ -101,7 +101,13 @@ async fn main() {
         .expect("device");
 
     log::debug!("Creating gaussians");
-    let gaussians = gs::core::PlyGaussians::read_ply_file(model_path).expect("gaussians");
+    let gaussians = [
+        gs::core::GaussiansSource::Ply,
+        gs::core::GaussiansSource::Spz,
+    ]
+    .into_iter()
+    .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
+    .expect("gaussians");
 
     log::debug!("Creating editor");
     let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
@@ -153,14 +159,31 @@ async fn main() {
         .gaussians_buffer
         .download_gaussians(&device, &queue)
         .await
-        .expect("gaussians download")
-        .into_iter()
-        .map(|g| g.to_ply())
-        .collect::<gs::core::PlyGaussians>();
+        .map(|gs| {
+            match &args.output[args.output.len().saturating_sub(4)..] {
+                ".ply" => {
+                    gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(gs.into_iter()))
+                }
+                ".spz" => {
+                    gs::core::Gaussians::Spz(
+                        gs::core::SpzGaussians::from_gaussians_with_options(
+                            gs,
+                            &gs::core::SpzGaussiansFromGaussianSliceOptions {
+                                version: 2, // Version 2 is more widely supported as of now
+                                ..Default::default()
+                            },
+                        )
+                        .expect("SpzGaussians from gaussians"),
+                    )
+                }
+                _ => panic!("Unsupported output file extension, expected .ply or .spz"),
+            }
+        })
+        .expect("gaussians download");
 
     log::debug!("Writing modified Gaussians to output file");
     modified_gaussians
-        .write_ply_file(&args.output)
+        .write_to_file(&args.output)
         .expect("write modified Gaussians to output file");
 
     log::info!("Modified Gaussians written to {}", args.output);
