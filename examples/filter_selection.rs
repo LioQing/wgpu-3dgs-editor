@@ -13,7 +13,7 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_core::PlyGaussians;
+use wgpu_3dgs_core::IterGaussian;
 use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
 
 /// The command line arguments.
@@ -132,7 +132,13 @@ async fn main() {
         .expect("device");
 
     log::debug!("Creating gaussians");
-    let gaussians = gs::core::PlyGaussians::read_ply_file(model_path).expect("gaussians");
+    let gaussians = [
+        gs::core::GaussiansSource::Ply,
+        gs::core::GaussiansSource::Spz,
+    ]
+    .into_iter()
+    .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
+    .expect("gaussians");
 
     log::debug!("Creating gaussians buffer");
     let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians);
@@ -225,14 +231,33 @@ async fn main() {
                 .enumerate()
                 .map(|(i, g)| g & (1 << i) != 0)
         })
-        .zip(gaussians.iter())
+        .zip(gaussians.iter_gaussian())
         .filter(|(selected, _)| *selected)
-        .map(|(_, g)| *g)
-        .collect::<PlyGaussians>();
+        .map(|(_, g)| g)
+        .collect::<Vec<_>>();
+
+    let selected_gaussians = match &args.output[args.output.len().saturating_sub(4)..] {
+        ".ply" => gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(
+            selected_gaussians.into_iter(),
+        )),
+        ".spz" => {
+            gs::core::Gaussians::Spz(
+                gs::core::SpzGaussians::from_gaussians_with_options(
+                    selected_gaussians,
+                    &gs::core::SpzGaussiansFromGaussianSliceOptions {
+                        version: 2, // Version 2 is more widely supported as of now
+                        ..Default::default()
+                    },
+                )
+                .expect("SpzGaussians from gaussians"),
+            )
+        }
+        _ => panic!("Unsupported output file extension, expected .ply or .spz"),
+    };
 
     log::debug!("Writing modified Gaussians to output file");
     selected_gaussians
-        .write_ply_file(&args.output)
+        .write_to_file(&args.output)
         .expect("write modified Gaussians to output file");
 
     log::info!("Filtered Gaussians written to {}", args.output);
