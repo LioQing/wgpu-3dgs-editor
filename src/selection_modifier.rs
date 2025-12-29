@@ -44,10 +44,8 @@ use crate::{
 /// # let (device, _queue) = adapter
 /// #     .request_device(&wgpu::DeviceDescriptor {
 /// #         label: Some("Device"),
-/// #         required_features: wgpu::Features::empty(),
 /// #         required_limits: adapter.limits(),
-/// #         memory_hints: wgpu::MemoryHints::default(),
-/// #         trace: wgpu::Trace::Off,
+/// #         ..Default::default()
 /// #     })
 /// #     .await
 /// #     .expect("device");
@@ -147,10 +145,8 @@ use crate::{
 /// # let (device, _queue) = adapter
 /// #     .request_device(&wgpu::DeviceDescriptor {
 /// #         label: Some("Device"),
-/// #         required_features: wgpu::Features::empty(),
 /// #         required_limits: adapter.limits(),
-/// #         memory_hints: wgpu::MemoryHints::default(),
-/// #         trace: wgpu::Trace::Off,
+/// #         ..Default::default()
 /// #     })
 /// #     .await
 /// #     .expect("device");
@@ -200,7 +196,7 @@ use crate::{
 ///     },
 /// );
 /// # });
-/// ``````
+/// ```
 #[derive(Debug)]
 pub struct SelectionModifier<G: GaussianPod, M: Modifier<G>> {
     pub selection_expr: SelectionExpr,

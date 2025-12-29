@@ -53,7 +53,7 @@ impl<G: GaussianPod, M: Modifier<G>> NonDestructiveModifier<G, M> {
         );
 
         queue.submit(Some(encoder.finish()));
-        device.poll(wgpu::PollType::Wait)?;
+        device.poll(wgpu::PollType::wait_indefinitely())?;
 
         Ok(Self {
             modifier,
