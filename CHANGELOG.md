@@ -1,5 +1,7 @@
 # Changelog
 
+Please also check out the [wgpu-3dgs-core changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
+
 ## [0.4.1](https://crates.io/crates/wgpu-3dgs-editor/0.4.1) - 2025-10-05
 
 ### Added
