@@ -1,6 +1,22 @@
 # Changelog
 
-Please also check out the [wgpu-3dgs-core changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
+Please also check out the [`wgpu-3dgs-viewer` changelog](https://github.com/LioQing/wgpu-3dgs-viewer/blob/master/CHANGELOG.md) and [`wgpu-3dgs-core` changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
+
+## [0.5.0](https://crates.io/crates/wgpu-3dgs-editor/0.5.0) - 2025-12-30
+
+### Added
+
+- 🎨 Add `BasicColorRgbOrHsvModifiersPod` to represent RGB or HSV color modifiers more explicitly. [#6](https://github.com/LioQing/wgpu-3dgs-editor/pull/6)
+
+### Changed
+
+- ⚡ Upgrade `wgpu` to 27.0 and `bitflags` to 2.10. [#10](https://github.com/LioQing/wgpu-3dgs-editor/pull/10)
+- 📂 Examples now support both PLY and SPZ file formats with automatic detection. [#9](https://github.com/LioQing/wgpu-3dgs-editor/pull/9)
+
+### Breaking Changes
+
+- Remove `SelectionModifier::apply_with` method. [#8](https://github.com/LioQing/wgpu-3dgs-editor/pull/8)
+- `BasicColorModifiersPod::rgb_or_hsv` now uses `BasicColorRgbOrHsvModifiersPod` instead of plain `Vec3`. [#6](https://github.com/LioQing/wgpu-3dgs-editor/pull/6)
 
 ## [0.4.1](https://crates.io/crates/wgpu-3dgs-editor/0.4.1) - 2025-10-05
 
