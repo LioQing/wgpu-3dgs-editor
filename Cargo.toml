@@ -49,13 +49,13 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [dependencies]
-# wgpu-3dgs-core = { version = "0.4" }
+wgpu-3dgs-core = { version = "0.5" }
 
 # For local development:
 # wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
 # For developing against latest upstream:
-wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
+# wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
 
 bytemuck = { version = "1.23", features = [
     "derive",
