@@ -192,7 +192,7 @@ fn test_selection_bundle_evaluate_when_expr_is_complement_should_invert_selectio
     );
 }
 
-const TEST_UNARY_PACKAGE: wesl::Pkg = inline_wesl_pkg!(
+const TEST_UNARY_PACKAGE: wesl::CodegenPkg = inline_wesl_pkg!(
     use [&wgpu_3dgs_editor::core::shader::PACKAGE],
 
     "test_unary": // Always set odd indices
@@ -266,7 +266,7 @@ fn test_selection_bundle_evaluate_when_expr_is_unary_should_correctly_select_gau
     test_selection_bundle_evaluate_helper(&ctx, vec![bundle], |l, _| l.unary(0, vec![]), 0b1011);
 }
 
-const TEST_BINARY_PACKAGE: wesl::Pkg = inline_wesl_pkg!(
+const TEST_BINARY_PACKAGE: wesl::CodegenPkg = inline_wesl_pkg!(
     use [&wgpu_3dgs_editor::core::shader::PACKAGE],
 
     "test_binary": // Use source if first half, dest otherwise
@@ -347,7 +347,7 @@ fn test_selection_bundle_evaluate_when_expr_is_binary_should_correctly_select_ga
     );
 }
 
-const TEST_SELECTION_PACKAGE: wesl::Pkg = inline_wesl_pkg!(
+const TEST_SELECTION_PACKAGE: wesl::CodegenPkg = inline_wesl_pkg!(
     use [&wgpu_3dgs_editor::core::shader::PACKAGE],
 
     "test_selection": // Select by position
