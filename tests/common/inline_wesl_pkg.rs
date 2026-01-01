@@ -1,9 +1,9 @@
 #[macro_export]
 macro_rules! inline_wesl_pkg {
     (use $deps:expr, $name:literal => $module_name:literal: $($body:tt)+) => {
-        wesl::Pkg {
+        wesl::CodegenPkg {
             crate_name: $name,
-            root: &wesl::PkgModule {
+            root: &wesl::CodegenModule {
                 name: $module_name,
                 source: {
                     stringify!($($body)+)
