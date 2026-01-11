@@ -1,6 +1,6 @@
 [package]
 name = "wgpu-3dgs-editor"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 authors = ["Lio Qing"]
 license = "MIT OR Apache-2.0"
@@ -17,7 +17,7 @@ include = [
 ]
 repository = "https://github.com/LioQing/wgpu-3dgs-editor"
 homepage = "https://github.com/LioQing/wgpu-3dgs-editor"
-keywords = ["gaussian-splatting", "point-cloud", "wgpu", "graphics", "ply"]
+keywords = ["gaussian-splatting", "wgpu", "graphics", "ply", "spz"]
 categories = ["graphics", "wasm"]
 
 [lib]
@@ -49,13 +49,13 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [dependencies]
-# wgpu-3dgs-core = { version = "0.5" }
+wgpu-3dgs-core = { version = "0.6" }
 
 # For local development:
 # wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
 # For developing against latest upstream:
-wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
+# wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
 
 bytemuck = { version = "1.24", features = [
     "derive",

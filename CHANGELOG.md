@@ -2,6 +2,16 @@
 
 Please also check out the [`wgpu-3dgs-viewer` changelog](https://github.com/LioQing/wgpu-3dgs-viewer/blob/master/CHANGELOG.md) and [`wgpu-3dgs-core` changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
 
+## [0.6.0](https://crates.io/crates/wgpu-3dgs-editor/0.6.0) - 2026-01-11
+
+### Added
+
+- 🤖 CI workflow. [#12](https://github.com/LioQing/wgpu-3dgs-editor/pull/12)
+
+### Changed
+
+- ⚡ Upgrade `wgpu` to 28.0, `wesl` to 0.3, `half` to 2.7, and `bytemuck` to 1.24. [#11](https://github.com/LioQing/wgpu-3dgs-editor/pull/11)
+
 ## [0.5.0](https://crates.io/crates/wgpu-3dgs-editor/0.5.0) - 2025-12-30
 
 ### Added
