@@ -9,12 +9,6 @@
 
 ## Overview
 
-> [!WARNING]
->
-> This library is under active development, breaking API changes between versions may occur frequently.
->
-> Use at your own risk.
-
 This library provides a set of tools to create and manipulate 3D Gaussian Splatting models. It includes:
 
 - Selecting Gaussians using selection operations and expressions.

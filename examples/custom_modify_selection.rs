@@ -74,7 +74,8 @@ async fn main() {
     let radius = args.radius;
 
     log::debug!("Creating wgpu instance");
-    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+    let instance =
+        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
 
     log::debug!("Requesting adapter");
     let adapter = instance
