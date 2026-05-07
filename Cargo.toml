@@ -49,20 +49,20 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [dependencies]
-# wgpu-3dgs-core = { version = "0.6" }
+# wgpu-3dgs-core = { version = "0.7" }
 
 # For local development:
 # wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
 # For developing against latest upstream:
-wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
+wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core", rev = "226984e" }
 
-bytemuck = { version = "1.24", features = [
+bytemuck = { version = "1.25", features = [
     "derive",
     "extern_crate_alloc",
     "min_const_generics",
 ] }
-bitflags = { version = "2.10", features = ["bytemuck"] }
+bitflags = { version = "2.11", features = ["bytemuck"] }
 glam = { version = "0.32", features = ["bytemuck"] }
 half = { version = "2.7", features = ["bytemuck"] }
 log = "0.4"
@@ -73,7 +73,7 @@ wesl = "0.3"
 
 [dev-dependencies]
 assert_matches = { version = "1.5" }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 env_logger = { version = "0.11" }
 pollster = { version = "0.4", features = ["macro"] }
 winit = { version = "0.30" }

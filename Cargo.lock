@@ -2964,7 +2964,7 @@ dependencies = [
 [[package]]
 name = "wgpu-3dgs-core"
 version = "0.6.0"
-source = "git+https://github.com/LioQing/wgpu-3dgs-core#226984e3679c663d429b5e1bc3e2b06e3bc5a6db"
+source = "git+https://github.com/LioQing/wgpu-3dgs-core?rev=226984e#226984e3679c663d429b5e1bc3e2b06e3bc5a6db"
 dependencies = [
  "async-trait",
  "bytemuck",
