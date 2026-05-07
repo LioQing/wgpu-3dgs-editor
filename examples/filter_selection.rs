@@ -111,7 +111,8 @@ async fn main() {
     let offset = Vec3::from_slice(&args.offset);
 
     log::debug!("Creating wgpu instance");
-    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+    let instance =
+        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
 
     log::debug!("Requesting adapter");
     let adapter = instance
