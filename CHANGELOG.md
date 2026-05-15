@@ -2,6 +2,13 @@
 
 Please also check out the [`wgpu-3dgs-viewer` changelog](https://github.com/LioQing/wgpu-3dgs-viewer/blob/master/CHANGELOG.md) and [`wgpu-3dgs-core` changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
 
+## [0.7.0](https://crates.io/crates/wgpu-3dgs-editor/0.7.0) - 2026-05-15
+
+### Changed
+
+- ⚡ Upgrade `wgpu` to 29.0, `glam` to 0.32, and a few other internal dependencies. [#13](https://github.com/LioQing/wgpu-3dgs-editor/pull/13)
+- 📝 Remove the active development breaking changes warning in README.md. [#13](https://github.com/LioQing/wgpu-3dgs-editor/pull/13)
+
 ## [0.6.0](https://crates.io/crates/wgpu-3dgs-editor/0.6.0) - 2026-01-11
 
 ### Added
