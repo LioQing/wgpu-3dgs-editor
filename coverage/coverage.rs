@@ -84,7 +84,9 @@ fn main() {
     cargo!("llvm-cov --no-report nextest --all-features");
 
     println!("Generating coverage report");
-    cargo!("llvm-cov report --lcov --output-path {lcov_path_str}");
+    cargo!(
+        "llvm-cov report --lcov --ignore-filename-regex wgpu-3dgs-core --output-path {lcov_path_str}"
+    );
 
     println!("Generating badge");
 
