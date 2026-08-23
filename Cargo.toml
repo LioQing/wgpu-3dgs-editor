@@ -49,7 +49,7 @@ all-features = true
 cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
 
 [dependencies]
-wgpu-3dgs-core = { version = "0.7" }
+wgpu-3dgs-core = { version = "0.8" }
 
 bytemuck = { version = "1.25", features = [
     "derive",
@@ -66,9 +66,6 @@ wgpu = "30.0"
 wesl = "0.4"
 
 [patch.crates-io]
-# wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core", tag = "v0.8.0" }
-
-# For development against latest master:
 wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
 
 # For local development:
