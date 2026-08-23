@@ -23,7 +23,7 @@ use crate::{
 /// carry a vector of bind groups that are used in the operation when dispatched/evaluated.
 /// These vectors should correspond to the selection bundle's bind groups starting at index 1,
 /// because index 0 must be defined by [`SelectionBundle::GAUSSIANS_BIND_GROUP_LAYOUT_DESCRIPTOR`].
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum SelectionExpr {
     /// Apply an identity operation.
     #[default]

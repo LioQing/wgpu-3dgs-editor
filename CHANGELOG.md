@@ -4,6 +4,10 @@ Please also check out the [`wgpu-3dgs-viewer` changelog](https://github.com/LioQ
 
 ## [0.8.0](https://crates.io/crates/wgpu-3dgs-editor/0.8.0) - 2026-08-23
 
+### Added
+
+- 🖨️ Add `Clone` to `SelectionExpr`. [#15](https://github.com/LioQing/wgpu-3dgs-editor/pull/15)
+
 ### Changed
 
 - ⚡ Upgrade `wgpu` to 30.0, `wesl` to 0.4, `glam` to 0.33, `bitflags` to 2.13, and a few other internal dependencies. [#14](https://github.com/LioQing/wgpu-3dgs-editor/pull/14)
