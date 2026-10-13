@@ -3,42 +3,42 @@ use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     Editor, InvTransformBuffer, SelectionBuffer, SelectionBundle, SelectionExpr,
     core::{
-        BufferWrapper, ComputeBundle, ComputeBundleBuilder, Gaussian, GaussianPod,
-        GaussianPodWithShSingleCov3dRotScaleConfigs, glam::*,
+        BufferWrapper, ComputeBundle, ComputeBundleBuilder, CovRotScale, Gaussian, GaussianPod,
+        PackedGaussian, ShSingle, glam::*,
     },
 };
 
 use crate::{common::TestContext, inline_wesl_pkg};
 
-type G = GaussianPodWithShSingleCov3dRotScaleConfigs;
+type G = PackedGaussian<ShSingle, CovRotScale>;
 
 fn given_test_selection_gaussians() -> Vec<Gaussian> {
     vec![
         Gaussian {
             pos: Vec3::new(0.0, 0.0, 0.0),
             rot: Quat::IDENTITY,
-            color: U8Vec4::new(255, 0, 0, 255),
+            color: Vec4::new(1.0, 0.0, 0.0, 1.0),
             sh: [Vec3::ZERO; 15],
             scale: Vec3::ONE,
         },
         Gaussian {
             pos: Vec3::new(1.0, 0.0, 0.0),
             rot: Quat::IDENTITY,
-            color: U8Vec4::new(0, 255, 0, 255),
+            color: Vec4::new(0.0, 1.0, 0.0, 1.0),
             sh: [Vec3::ZERO; 15],
             scale: Vec3::ONE,
         },
         Gaussian {
             pos: Vec3::new(2.0, 0.0, 0.0),
             rot: Quat::IDENTITY,
-            color: U8Vec4::new(0, 0, 255, 255),
+            color: Vec4::new(0.0, 0.0, 1.0, 1.0),
             sh: [Vec3::ZERO; 15],
             scale: Vec3::ONE,
         },
         Gaussian {
             pos: Vec3::new(3.0, 0.0, 0.0),
             rot: Quat::IDENTITY,
-            color: U8Vec4::new(255, 255, 255, 255),
+            color: Vec4::new(1.0, 1.0, 1.0, 1.0),
             sh: [Vec3::ZERO; 15],
             scale: Vec3::ONE,
         },
@@ -80,7 +80,7 @@ fn test_selection_bundle_evaluate_helper(
     expected: u32,
 ) {
     let gaussians = given_test_selection_gaussians();
-    let editor = Editor::new(&ctx.device, &gaussians);
+    let editor = Editor::new(&ctx.device, &gaussians).expect("editor");
     let (left_buffer, right_buffer) = given_test_selection_buffers(ctx);
     let selection_buffer = SelectionBuffer::new(&ctx.device, gaussians.len() as u32);
 

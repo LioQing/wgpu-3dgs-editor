@@ -1,6 +1,9 @@
 //! This example selects parts of the model then apply a modifier using
 //! [`SelectionModifier::new_with_basic_modifier`](wgpu_3dgs_editor::SelectionModifier::new_with_basic_modifier).
 //!
+//! The input SH coefficients are converted to degree 3 before GPU upload, zero-padding lower
+//! degrees and truncating higher degrees. Output uses SH degree 3.
+//!
 //! For example, to select a sphere at (0.5, 1.0, 0.5) with scale (1, 1, 1),
 //! repeat the selection 2 times with an offset (2, 0, 0), and decrease the contrast of the selected Gaussians:
 //!
@@ -13,7 +16,10 @@
 use clap::{Parser, ValueEnum};
 use glam::*;
 
-use wgpu_3dgs_editor::{self as gs, core::BufferWrapper};
+use wgpu_3dgs_editor::{
+    self as gs,
+    core::{BufferWrapper, IterGaussian},
+};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -131,7 +137,7 @@ enum Shape {
     Box,
 }
 
-type GaussianPod = gs::core::GaussianPodWithShSingleCov3dRotScaleConfigs;
+type GaussianPod = gs::core::PackedGaussian<gs::core::ShSingle, gs::core::CovRotScale>;
 
 #[pollster::main]
 async fn main() {
@@ -178,8 +184,13 @@ async fn main() {
     .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
     .expect("gaussians");
 
+    let gpu_gaussians = gaussians
+        .iter_gaussian()
+        .map(|g| g.convert_sh_degree::<gs::core::ShDegree3>())
+        .collect::<Vec<_>>();
+
     log::debug!("Creating editor");
-    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
+    let editor = gs::Editor::<GaussianPod>::new(&device, &gpu_gaussians).expect("editor");
 
     log::debug!("Creating shape selection compute bundle");
     let shape_selection = shape(&device);
@@ -275,9 +286,10 @@ async fn main() {
         .await
         .map(|gs| {
             match &args.output[args.output.len().saturating_sub(4)..] {
-                ".ply" => {
-                    gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(gs.into_iter()))
-                }
+                ".ply" => gs::core::Gaussians::Ply(
+                    gs::core::PlyGaussians::from_gaussians(gs)
+                        .expect("PlyGaussians from gaussians"),
+                ),
                 ".spz" => {
                     gs::core::Gaussians::Spz(
                         gs::core::SpzGaussians::from_gaussians_with_options(

@@ -2,6 +2,23 @@
 
 Please also check out the [`wgpu-3dgs-viewer` changelog](https://github.com/LioQing/wgpu-3dgs-viewer/blob/master/CHANGELOG.md) and [`wgpu-3dgs-core` changelog](https://github.com/LioQing/wgpu-3dgs-core/blob/master/CHANGELOG.md).
 
+## [Unreleased]
+
+This version introduced a lot of breaking changes to `wgpu-3dgs-core`, you can also read the changelog for it to see what has changed.
+
+### Added
+
+- 🔢 Add support for editing Gaussians with SH storage degrees 0 to 4, with tests for all supported GPU layouts. [#16](https://github.com/LioQing/wgpu-3dgs-editor/pull/16)
+
+### Changed
+
+- 🧩 Update examples, tests, and documentation to use `PackedGaussian<Sh..., Cov...>` instead of the deprecated `GaussianPodWithSh...Cov3d...Configs` aliases. [#16](https://github.com/LioQing/wgpu-3dgs-editor/pull/16)
+
+### Breaking Changes
+
+- Change `Editor::new` to accept typed or runtime-degree sources and return `Result<Self, ShDegreeMismatchError>` when checking that the source SH degree matches the GPU storage degree. [#16](https://github.com/LioQing/wgpu-3dgs-editor/pull/16)
+- Update native `Gaussian::color` values to use `Vec4` with floating-point linear RGB and opacity instead of `U8Vec4`, following `wgpu-3dgs-core`. [#16](https://github.com/LioQing/wgpu-3dgs-editor/pull/16)
+
 ## [0.8.0](https://crates.io/crates/wgpu-3dgs-editor/0.8.0) - 2026-08-23
 
 ### Added

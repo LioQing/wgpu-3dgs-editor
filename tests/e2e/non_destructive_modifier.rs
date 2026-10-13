@@ -3,20 +3,19 @@ use wgpu_3dgs_editor::{
     BasicColorModifiersPod, BasicColorRgbOverrideOrHsvModifiersPod, BasicModifier, Editor,
     Modifier, NonDestructiveModifier, NonDestructiveModifierCreateError,
     core::{
-        GaussianPodWithShSingleCov3dRotScaleConfigs, GaussiansBuffer, GaussiansBufferUpdateError,
-        glam::*,
+        CovRotScale, GaussiansBuffer, GaussiansBufferUpdateError, PackedGaussian, ShSingle, glam::*,
     },
 };
 
 use crate::common::{TestContext, given};
 
-type G = GaussianPodWithShSingleCov3dRotScaleConfigs;
+type G = PackedGaussian<ShSingle, CovRotScale>;
 
 #[test]
 fn test_non_destructive_modifier_new_should_create_copy_of_original_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -82,7 +81,7 @@ fn test_non_destructive_modifier_new_without_copy_src_usage_should_return_error(
 fn test_non_destructive_modifier_apply_should_not_modify_original_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -133,8 +132,8 @@ fn test_non_destructive_modifier_apply_should_not_modify_original_gaussians() {
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(downloaded[1].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::new(1.0, 0.0, 0.0));
+    assert_eq!(downloaded[1].color.xyz(), Vec3::new(1.0, 0.0, 0.0));
 
     let original_downloaded = pollster::block_on(
         non_destructive_modifier
@@ -152,7 +151,7 @@ fn test_non_destructive_modifier_apply_should_not_modify_original_gaussians() {
 fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_from_latest() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -202,8 +201,8 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
     )
     .expect("download_gaussians");
 
-    assert_eq!(downloaded_red[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(downloaded_red[1].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded_red[0].color.xyz(), Vec3::new(1.0, 0.0, 0.0));
+    assert_eq!(downloaded_red[1].color.xyz(), Vec3::new(1.0, 0.0, 0.0));
 
     non_destructive_modifier
         .modifier
@@ -242,8 +241,8 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
     )
     .expect("download_gaussians");
 
-    assert_eq!(downloaded_green[0].color.xyz(), U8Vec3::new(0, 255, 0));
-    assert_eq!(downloaded_green[1].color.xyz(), U8Vec3::new(0, 255, 0));
+    assert_eq!(downloaded_green[0].color.xyz(), Vec3::new(0.0, 1.0, 0.0));
+    assert_eq!(downloaded_green[1].color.xyz(), Vec3::new(0.0, 1.0, 0.0));
 
     let original_downloaded = pollster::block_on(
         non_destructive_modifier
@@ -260,7 +259,7 @@ fn test_non_destructive_modifier_apply_multiple_times_should_only_have_result_fr
 fn test_non_destructive_modifier_try_apply_with_mismatched_count_should_return_error() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -309,7 +308,7 @@ fn test_non_destructive_modifier_try_apply_with_should_use_custom_apply_function
 
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -355,7 +354,7 @@ fn test_non_destructive_modifier_try_apply_with_should_use_custom_apply_function
 fn test_non_destructive_modifier_as_modifier_trait_should_work_correctly() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -407,6 +406,6 @@ fn test_non_destructive_modifier_as_modifier_trait_should_work_correctly() {
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(0, 0, 255));
-    assert_eq!(downloaded[1].color.xyz(), U8Vec3::new(0, 0, 255));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::new(0.0, 0.0, 1.0));
+    assert_eq!(downloaded[1].color.xyz(), Vec3::new(0.0, 0.0, 1.0));
 }

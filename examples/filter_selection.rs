@@ -1,6 +1,10 @@
 //! This example selects parts of the model, then filters the model to keep only the selected parts
 //! using [`SelectionBundle`](wgpu_3dgs_editor::SelectionBundle) and [`SelectionExpr`](wgpu_3dgs_editor::SelectionExpr).
 //!
+//! The input SH coefficients are converted to degree 3 only for GPU selection, zero-padding
+//! lower degrees and truncating higher degrees. Output uses the original coefficients and SH
+//! degree, including when no Gaussians are selected. Output uses the source's original SH degree.
+//!
 //! For example, to select a sphere at (0.5, 1.0, 0.5) with scale (1, 1, 1),
 //! repeat the selection 2 times with an offset (2, 0, 0), and keep only the selected Gaussians:
 //!
@@ -92,7 +96,7 @@ enum Shape {
     Box,
 }
 
-type GaussianPod = gs::core::GaussianPodWithShSingleCov3dSingleConfigs;
+type GaussianPod = gs::core::PackedGaussian<gs::core::ShSingle, gs::core::CovSingle>;
 
 #[pollster::main]
 async fn main() {
@@ -139,8 +143,13 @@ async fn main() {
     .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
     .expect("gaussians");
 
+    let gpu_gaussians = gaussians
+        .iter_gaussian()
+        .map(|g| g.convert_sh_degree::<gs::core::ShDegree3>())
+        .collect::<Vec<_>>();
+
     log::debug!("Creating gaussians buffer");
-    let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians);
+    let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gpu_gaussians);
 
     log::debug!("Creating model transform buffer");
     let model_transform = gs::core::ModelTransformBuffer::new(&device);
@@ -237,15 +246,23 @@ async fn main() {
         .collect::<Vec<_>>();
 
     let selected_gaussians = match &args.output[args.output.len().saturating_sub(4)..] {
-        ".ply" => gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(
-            selected_gaussians.into_iter(),
-        )),
+        ".ply" => gs::core::Gaussians::Ply(
+            gs::core::PlyGaussians::new(
+                selected_gaussians.into_iter().map(|g| g.to_ply()).collect(),
+                gaussians.sh_degree().get(),
+            )
+            .expect("PlyGaussians from gaussians"),
+        ),
         ".spz" => {
             gs::core::Gaussians::Spz(
                 gs::core::SpzGaussians::from_gaussians_with_options(
                     selected_gaussians,
                     &gs::core::SpzGaussiansFromGaussianSliceOptions {
                         version: 2, // Version 2 is more widely supported as of now
+                        sh_degree: gs::core::SpzGaussianShDegree::new(gaussians.sh_degree().get())
+                            .expect(
+                                "SPZ output only supports SH degrees 0 to 3; use PLY for degree 4",
+                            ),
                         ..Default::default()
                     },
                 )

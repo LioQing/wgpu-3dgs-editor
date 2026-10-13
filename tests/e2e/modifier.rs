@@ -5,14 +5,14 @@ use wgpu_3dgs_editor::{
     BasicModifier, BasicModifierBundle, Editor, Modifier, RotScaleBuffer, SelectionBuffer,
     TransformFlagsBuffer,
     core::{
-        GaussianPodWithShSingleCov3dRotScaleConfigs, GaussianTransformBuffer, GaussiansBuffer,
-        ModelTransformBuffer, glam::*,
+        CovRotScale, GaussianTransformBuffer, GaussiansBuffer, ModelTransformBuffer,
+        PackedGaussian, ShSingle, glam::*,
     },
 };
 
 use crate::common::{TestContext, given};
 
-type G = GaussianPodWithShSingleCov3dRotScaleConfigs;
+type G = PackedGaussian<ShSingle, CovRotScale>;
 
 #[test]
 fn test_modifier_apply_when_impl_is_fn_should_call_self() {
@@ -52,7 +52,7 @@ fn test_modifier_apply_when_impl_is_fn_should_call_self() {
 fn test_basic_modifier_bundle_without_bind_group_apply_should_modify_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let transform_flags_buffer = TransformFlagsBuffer::new(&ctx.device);
     let basic_color_modifiers_buffer = BasicColorModifiersBuffer::new(&ctx.device);
@@ -122,15 +122,15 @@ fn test_basic_modifier_bundle_without_bind_group_apply_should_modify_gaussians()
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(downloaded[1].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::X);
+    assert_eq!(downloaded[1].color.xyz(), Vec3::X);
 }
 
 #[test]
 fn test_basic_modifier_bundle_without_bind_group_with_selection_apply_should_modify_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
     let selection_buffer = SelectionBuffer::from(ctx.device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {
             label: Some("Selection Buffer"),
@@ -209,7 +209,7 @@ fn test_basic_modifier_bundle_without_bind_group_with_selection_apply_should_mod
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::X);
     assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
 
@@ -217,7 +217,7 @@ fn test_basic_modifier_bundle_without_bind_group_with_selection_apply_should_mod
 fn test_basic_modifier_apply_should_modify_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
 
     let modifier = BasicModifier::new(
         &ctx.device,
@@ -261,15 +261,15 @@ fn test_basic_modifier_apply_should_modify_gaussians() {
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
-    assert_eq!(downloaded[1].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::X);
+    assert_eq!(downloaded[1].color.xyz(), Vec3::X);
 }
 
 #[test]
 fn test_basic_modifier_with_selection_apply_should_modify_selected_gaussians() {
     let ctx = TestContext::new();
     let gaussians = given::gaussians();
-    let editor = Editor::<G>::new(&ctx.device, &gaussians);
+    let editor = Editor::<G>::new(&ctx.device, &gaussians).expect("editor");
     let selection_buffer = SelectionBuffer::from(ctx.device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {
             label: Some("Selection Buffer"),
@@ -321,6 +321,6 @@ fn test_basic_modifier_with_selection_apply_should_modify_selected_gaussians() {
     .expect("download_gaussians");
 
     assert_eq!(downloaded.len(), 2);
-    assert_eq!(downloaded[0].color.xyz(), U8Vec3::new(255, 0, 0));
+    assert_eq!(downloaded[0].color.xyz(), Vec3::X);
     assert_eq!(downloaded[1].color.xyz(), gaussians[1].color.xyz());
 }
