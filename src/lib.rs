@@ -19,7 +19,7 @@ pub use wgpu_3dgs_core as core;
 
 use wgpu_3dgs_core::{
     BufferWrapper, GaussianPod, GaussianTransformBuffer, GaussiansBuffer, IterGaussian,
-    ModelTransformBuffer,
+    ModelTransformBuffer, ShDegreeMismatchError,
 };
 
 /// An editor for Gaussians.
@@ -42,28 +42,33 @@ pub struct Editor<G: GaussianPod> {
 }
 
 impl<G: GaussianPod> Editor<G> {
-    /// Create a new editor.
-    pub fn new(device: &wgpu::Device, gaussians: &impl IterGaussian) -> Self {
+    /// Create a new editor from typed or runtime-degree Gaussians.
+    ///
+    /// Returns an error if the source SH degree does not match the storage degree of `G`.
+    pub fn new(
+        device: &wgpu::Device,
+        gaussians: &impl IterGaussian,
+    ) -> Result<Self, ShDegreeMismatchError> {
+        log::debug!("Creating gaussians buffer");
+        let gaussians_buffer = GaussiansBuffer::try_new_with_usage(
+            device,
+            gaussians,
+            GaussiansBuffer::<G>::DEFAULT_USAGES | wgpu::BufferUsages::COPY_SRC,
+        )?;
+
         log::debug!("Creating model transform buffer");
         let model_transform_buffer = ModelTransformBuffer::new(device);
 
         log::debug!("Creating gaussian transform buffer");
         let gaussian_transform_buffer = GaussianTransformBuffer::new(device);
 
-        log::debug!("Creating gaussians buffer");
-        let gaussians_buffer = GaussiansBuffer::new_with_usage(
-            device,
-            gaussians,
-            GaussiansBuffer::<G>::DEFAULT_USAGES | wgpu::BufferUsages::COPY_SRC,
-        );
-
         log::debug!("Basic editor created");
 
-        Self {
+        Ok(Self {
             model_transform_buffer,
             gaussian_transform_buffer,
             gaussians_buffer,
-        }
+        })
     }
 
     /// Apply the modifiers to the Gaussians.

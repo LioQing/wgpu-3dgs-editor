@@ -48,6 +48,8 @@ You can use [`Editor`] and [`SelectionModifier::new_with_basic_modifier`] to man
 ```rust ignore
 use wgpu_3dgs_editor as gs;
 
+type GaussianPod = gs::core::PackedGaussian<gs::core::ShSingle, gs::core::CovRotScale>;
+
 // Setup wgpu...
 
 // Read the Gaussians from the .ply file
@@ -55,7 +57,8 @@ let gaussians = gs::core::Gaussians::read_from_file(model_path, GaussiansSource:
     .expect("gaussians");
 
 // Create an editor that creates the necessary buffers, you may also create the buffers manually
-let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
+let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians)
+    .expect("gaussians must match the GPU layout's SH degree");
 
 // Create a basic selection modifier with a box and a sphere selection bundle
 let mut basic_selection_modifier =
@@ -136,12 +139,12 @@ let modified_gaussians = editor
     .gaussians_buffer
     .download_gaussians(&device, &queue)
     .await
-    .unwrap()
-    .map(|g| g.to_ply())
-    .collect::<core::PlyGaussians>();
+    .unwrap();
+let modified_gaussians = gs::core::PlyGaussians::from_gaussians(modified_gaussians)
+    .expect("PlyGaussians from gaussians");
 
 // Write the modified Gaussians to a .ply file
-modified_gaussians.write_ply_file(&args.output).unwrap();
+modified_gaussians.write_to_file(&args.output).unwrap();
 ```
 
 ## Examples

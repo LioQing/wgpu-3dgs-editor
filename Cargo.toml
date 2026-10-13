@@ -66,10 +66,10 @@ wgpu = "30.0"
 wesl = "0.4"
 
 [patch.crates-io]
-wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
+# wgpu-3dgs-core = { git = "https://github.com/LioQing/wgpu-3dgs-core" }
 
 # For local development:
-# wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
+wgpu-3dgs-core = { path = "../wgpu-3dgs-core" }
 
 [dev-dependencies]
 assert_matches = { version = "1.5" }

@@ -240,7 +240,7 @@ impl SelectionExpr {
 /// #     shader,
 /// # };
 /// #
-/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// # type GaussianPod = core::PackedGaussian<core::ShSingle, core::CovSingle>;
 /// #
 /// # let instance = wgpu::Instance::new(
 /// #     wgpu::InstanceDescriptor::new_without_display_handle_from_env()
@@ -287,14 +287,14 @@ impl SelectionExpr {
 /// // Create an editor that holds the buffers for the Gaussians
 /// let editor = Editor::new(
 ///     &device,
-///     &vec![core::Gaussian {
+///     &vec![core::Gaussian::<core::ShDegree3> {
 ///         rot: Quat::IDENTITY,
 ///         pos: Vec3::ZERO,
-///         color: U8Vec4::ZERO,
+///         color: Vec4::ZERO,
 ///         sh: [Vec3::ZERO; 15],
 ///         scale: Vec3::ONE,
 ///     }],
-/// );
+/// ).expect("editor");
 ///
 /// // Create the selection custom operation compute bundle
 /// let my_selection_custom_op_bundle = core::ComputeBundleBuilder::new()

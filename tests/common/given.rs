@@ -11,12 +11,12 @@ pub fn gaussian_with_seed(seed: u32) -> Gaussian {
 
     let pos = Vec3::new(base + 1.0, base + 2.0, base + 3.0);
 
-    let color = U8Vec4::new(
-        ((base + 10.0) % 256.0) as u8,
-        ((base + 20.0) % 256.0) as u8,
-        ((base + 30.0) % 256.0) as u8,
-        ((base + 40.0) % 256.0) as u8,
-    );
+    let color = Vec4::new(
+        (base + 10.0) % 256.0,
+        (base + 20.0) % 256.0,
+        (base + 30.0) % 256.0,
+        (base + 40.0) % 256.0,
+    ) / 255.0;
 
     let mut sh = [Vec3::ZERO; 15];
     for (i, sh) in sh.iter_mut().enumerate() {

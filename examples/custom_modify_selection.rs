@@ -62,7 +62,7 @@ enum Factory {
     Closure,
 }
 
-type GaussianPod = gs::core::GaussianPodWithShSingleCov3dRotScaleConfigs;
+type GaussianPod = gs::core::PackedGaussian<gs::core::ShSingle, gs::core::CovRotScale>;
 
 #[pollster::main]
 async fn main() {
@@ -103,7 +103,8 @@ async fn main() {
     .expect("gaussians");
 
     log::debug!("Creating editor");
-    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians);
+    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians)
+        .expect("gaussians must match the GPU layout's SH degree");
 
     log::debug!("Creating buffers");
     let pos_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -372,9 +373,10 @@ async fn main() {
         .await
         .map(|gs| {
             match &args.output[args.output.len().saturating_sub(4)..] {
-                ".ply" => {
-                    gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(gs.into_iter()))
-                }
+                ".ply" => gs::core::Gaussians::Ply(
+                    gs::core::PlyGaussians::from_gaussians(gs)
+                        .expect("PlyGaussians from gaussians"),
+                ),
                 ".spz" => {
                     gs::core::Gaussians::Spz(
                         gs::core::SpzGaussians::from_gaussians_with_options(

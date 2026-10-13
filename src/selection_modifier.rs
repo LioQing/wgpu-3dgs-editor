@@ -32,7 +32,7 @@ use crate::{
 /// #     },
 /// # };
 /// #
-/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// # type GaussianPod = core::PackedGaussian<core::ShSingle, core::CovSingle>;
 /// #
 /// # let instance = wgpu::Instance::new(
 /// #     wgpu::InstanceDescriptor::new_without_display_handle_from_env()
@@ -55,14 +55,14 @@ use crate::{
 /// // Create an editor that holds the buffers for the Gaussians and will apply the modifier
 /// let editor = Editor::new(
 ///     &device,
-///     &vec![core::Gaussian {
+///     &vec![core::Gaussian::<core::ShDegree3> {
 ///         rot: Quat::IDENTITY,
 ///         pos: Vec3::ZERO,
-///         color: U8Vec4::ZERO,
+///         color: Vec4::ZERO,
 ///         sh: [Vec3::ZERO; 15],
 ///         scale: Vec3::ONE,
 ///     }],
-/// );
+/// ).expect("editor");
 ///
 /// // Create your selection bundles
 /// let selection_bundles = vec![
@@ -135,7 +135,7 @@ use crate::{
 /// #     },
 /// # };
 /// #
-/// # type GaussianPod = core::GaussianPodWithShSingleCov3dSingleConfigs;
+/// # type GaussianPod = core::PackedGaussian<core::ShSingle, core::CovSingle>;
 /// #
 /// # let instance = wgpu::Instance::new(
 /// #     wgpu::InstanceDescriptor::new_without_display_handle_from_env()
@@ -157,14 +157,14 @@ use crate::{
 /// #
 /// # let editor = Editor::new(
 /// #     &device,
-/// #     &vec![core::Gaussian {
+/// #     &vec![core::Gaussian::<core::ShDegree3> {
 /// #         rot: Quat::IDENTITY,
 /// #         pos: Vec3::ZERO,
-/// #         color: U8Vec4::ZERO,
+/// #         color: Vec4::ZERO,
 /// #         sh: [Vec3::ZERO; 15],
 /// #         scale: Vec3::ONE,
 /// #     }],
-/// # );
+/// # ).expect("editor");
 /// #
 /// # let selection_bundles = vec![
 /// #     // The built-in sphere selection bundle as example

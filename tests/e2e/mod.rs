@@ -1,3 +1,4 @@
+mod editor;
 mod modifier;
 mod non_destructive_modifier;
 mod selection;

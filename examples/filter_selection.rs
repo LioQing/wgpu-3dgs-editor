@@ -92,7 +92,7 @@ enum Shape {
     Box,
 }
 
-type GaussianPod = gs::core::GaussianPodWithShSingleCov3dSingleConfigs;
+type GaussianPod = gs::core::PackedGaussian<gs::core::ShSingle, gs::core::CovSingle>;
 
 #[pollster::main]
 async fn main() {
@@ -140,7 +140,8 @@ async fn main() {
     .expect("gaussians");
 
     log::debug!("Creating gaussians buffer");
-    let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::new(&device, &gaussians);
+    let gaussians_buffer = gs::core::GaussiansBuffer::<GaussianPod>::try_new(&device, &gaussians)
+        .expect("gaussians must match the GPU layout's SH degree");
 
     log::debug!("Creating model transform buffer");
     let model_transform = gs::core::ModelTransformBuffer::new(&device);
@@ -237,9 +238,13 @@ async fn main() {
         .collect::<Vec<_>>();
 
     let selected_gaussians = match &args.output[args.output.len().saturating_sub(4)..] {
-        ".ply" => gs::core::Gaussians::Ply(gs::core::PlyGaussians::from_iter(
-            selected_gaussians.into_iter(),
-        )),
+        ".ply" => gs::core::Gaussians::Ply(
+            gs::core::PlyGaussians::new(
+                selected_gaussians.into_iter().map(|g| g.to_ply()).collect(),
+                gaussians.sh_degree().get(),
+            )
+            .expect("PlyGaussians from gaussians"),
+        ),
         ".spz" => {
             gs::core::Gaussians::Spz(
                 gs::core::SpzGaussians::from_gaussians_with_options(
