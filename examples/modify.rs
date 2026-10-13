@@ -1,5 +1,8 @@
 //! This example modifies the entire model using [`BasicModifier`](wgpu_3dgs_editor::BasicModifier).
 //!
+//! The input SH coefficients are converted to degree 3 before GPU upload, zero-padding lower
+//! degrees and truncating higher degrees. Output uses SH degree 3.
+//!
 //! For example, to decrease the contrast of the model:
 //!
 //! ```sh
@@ -9,7 +12,7 @@
 use clap::Parser;
 use glam::*;
 
-use wgpu_3dgs_editor::{self as gs};
+use wgpu_3dgs_editor::{self as gs, core::IterGaussian};
 
 /// The command line arguments.
 #[derive(Parser, Debug)]
@@ -108,9 +111,13 @@ async fn main() {
     .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
     .expect("gaussians");
 
+    let gpu_gaussians = gaussians
+        .iter_gaussian()
+        .map(|g| g.convert_sh_degree::<gs::core::ShDegree3>())
+        .collect::<Vec<_>>();
+
     log::debug!("Creating editor");
-    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians)
-        .expect("gaussians must match the GPU layout's SH degree");
+    let editor = gs::Editor::<GaussianPod>::new(&device, &gpu_gaussians).expect("editor");
 
     log::debug!("Creating basic modifier");
     let basic_modifier = gs::BasicModifier::<GaussianPod>::new(

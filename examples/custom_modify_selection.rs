@@ -2,6 +2,9 @@
 //! using [`SelectionModifier`](wgpu_3dgs_editor::SelectionModifier) and a user-defined
 //! compute pipeline built with [`ComputeBundleBuilder`](wgpu_3dgs_editor::core::ComputeBundleBuilder).
 //!
+//! The input SH coefficients are converted to degree 3 before GPU upload, zero-padding lower
+//! degrees and truncating higher degrees. Output uses SH degree 3.
+//!
 //! The custom selection is a cylinder aligned with the z-axis, centered at `pos` with a given `radius`.
 //!
 //! The custom modifier shifts the hue of the selected Gaussians according to their x and y coordinates
@@ -19,7 +22,7 @@ use glam::*;
 use wgpu::util::DeviceExt;
 use wgpu_3dgs_editor::{
     self as gs,
-    core::{BufferWrapper, GaussianPod as _},
+    core::{BufferWrapper, GaussianPod as _, IterGaussian},
 };
 
 /// The command line arguments.
@@ -102,9 +105,13 @@ async fn main() {
     .find_map(|source| gs::core::Gaussians::read_from_file(model_path, source).ok())
     .expect("gaussians");
 
+    let gpu_gaussians = gaussians
+        .iter_gaussian()
+        .map(|g| g.convert_sh_degree::<gs::core::ShDegree3>())
+        .collect::<Vec<_>>();
+
     log::debug!("Creating editor");
-    let editor = gs::Editor::<GaussianPod>::new(&device, &gaussians)
-        .expect("gaussians must match the GPU layout's SH degree");
+    let editor = gs::Editor::<GaussianPod>::new(&device, &gpu_gaussians).expect("editor");
 
     log::debug!("Creating buffers");
     let pos_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
